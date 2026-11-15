@@ -1,0 +1,77 @@
+// -----------------------------------------------------------------------------
+// An in-memory OpenFamily server behind a `fetch` stand-in: the routes the
+// integration calls, with the answers the real server gives (see the
+// OpenFamily API). Tests never touch the network.
+// -----------------------------------------------------------------------------
+
+export const URL_BASE = 'http://openfamily.test:3000';
+export const TOKEN = `ofk_${'a'.repeat(43)}`;
+
+const json = (status, body) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+export function createFakeOpenFamily({ scope = 'write' } = {}) {
+  const server = {
+    scope,
+    down: false,
+    shopping: [],
+    tasks: [],
+    appointments: [],
+    requests: [],
+    nextId: 1,
+  };
+
+  server.fetch = async (input, init = {}) => {
+    const url = new URL(String(input));
+    const method = init.method ?? 'GET';
+    const body = init.body ? JSON.parse(init.body) : undefined;
+    server.requests.push({ method, path: url.pathname, search: url.search, body });
+    if (server.down) {
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
+    }
+    if (init.headers?.Authorization !== `Bearer ${TOKEN}`) {
+      return json(401, { success: false, error: 'Invalid token' });
+    }
+    if (method !== 'GET' && server.scope === 'read') {
+      return json(403, { success: false, error: 'read_only_token' });
+    }
+    const ok = (data) => json(200, { success: true, data });
+    const path = url.pathname;
+
+    if (method === 'GET' && path === '/api/auth/me') {
+      return ok({ user: { id: 'u1', name: 'Alex', email: 'alex@example.org' } });
+    }
+    if (method === 'GET' && path === '/api/shopping') return ok(server.shopping);
+    if (method === 'POST' && path === '/api/shopping') {
+      const item = {
+        id: `item-${server.nextId++}`,
+        is_checked: false,
+        quantity: null,
+        unit: null,
+        ...body,
+      };
+      server.shopping.push(item);
+      return ok(item);
+    }
+    if (method === 'GET' && path === '/api/tasks') return ok(server.tasks);
+    if (method === 'POST' && path === '/api/tasks') {
+      const task = { id: `task-${server.nextId++}`, is_completed: false, due_date: null, ...body };
+      server.tasks.push(task);
+      return ok(task);
+    }
+    const put = path.match(/^\/api\/(shopping|tasks)\/([^/]+)$/);
+    if (method === 'PUT' && put) {
+      const entry = server[put[1]].find((candidate) => candidate.id === decodeURIComponent(put[2]));
+      if (!entry) return json(404, { success: false, error: 'Not found' });
+      Object.assign(entry, body);
+      return ok(entry);
+    }
+    if (method === 'GET' && path === '/api/appointments') return ok(server.appointments);
+    return json(404, { success: false, error: 'Not found' });
+  };
+
+  return server;
+}
