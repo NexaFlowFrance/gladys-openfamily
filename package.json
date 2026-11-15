@@ -1,6 +1,6 @@
 {
   "name": "gladys-openfamily",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "OpenFamily for Gladys Assistant: the family calendar, shopping list and tasks on the dashboard and in scenes.",
   "type": "module",

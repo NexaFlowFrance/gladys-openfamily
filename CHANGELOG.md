@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-15
+
 ### Added
 
 - An optional "Time zone of the family" setting, for a Gladys whose time zone
@@ -30,5 +32,6 @@ the notes of the version's GitHub Release.
 - Changes arrive within seconds through OpenFamily's real-time channel, with a
   periodic reading as the safety net.
 
-[Unreleased]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/NexaFlowFrance/gladys-openfamily/releases/tag/v0.1.0
