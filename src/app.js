@@ -7,7 +7,7 @@
 
 import { createHash } from 'node:crypto';
 import { createLogger } from '@gladysassistant/integration-sdk';
-import { isConfigured, normalizeConfig } from './config.js';
+import { isConfigured, normalizeConfig, normalizeTimeZone } from './config.js';
 import { OpenFamilyClient, OpenFamilyError, ERRORS } from './openfamily.js';
 import { localDay, naive, splitWindows, syncWindow, toGladysEvent } from './calendar.js';
 import {
@@ -107,17 +107,11 @@ export class OpenFamilyApp {
     this.reset();
     this.config = normalizeConfig(rawConfig);
     this.client = new OpenFamilyClient({ ...this.config, fetchImpl: this.fetchImpl });
-    // OpenFamily's date-times are local to the family. Gladys starts this
-    // container in the time zone of its settings, and in UTC when it was never
-    // set there: the optional setting makes the whole process read in the
-    // family's zone (calendar, "today", due dates alike).
-    if (this.config.timeZone) {
-      process.env.TZ = this.config.timeZone;
-    }
     if (!isConfigured(this.config)) {
       await this.status(new OpenFamilyError(ERRORS.NOT_CONFIGURED));
       return;
     }
+    await this.adoptTimeZone();
     await this.tick();
     if (this.timers) {
       this.pollTimer = setInterval(() => void this.tick(), this.config.pollMinutes * 60 * 1000);
@@ -130,6 +124,29 @@ export class OpenFamilyApp {
         WebSocketImpl: this.WebSocketImpl,
         onUpdate: (entity) => this.liveUpdate(entity),
       });
+    }
+  }
+
+  /**
+   * OpenFamily's date-times are local to the family: the whole process reads
+   * them in the family's zone (calendar, "today", due dates alike). That zone
+   * is, in order: the one set in this integration's configuration; the
+   * family's own, which OpenFamily 2.0 and later give with the account; and
+   * otherwise the one Gladys started this container in, which is UTC when the
+   * time zone was never set in the Gladys settings.
+   */
+  async adoptTimeZone() {
+    if (this.config.timeZone) {
+      process.env.TZ = this.config.timeZone;
+      return;
+    }
+    try {
+      const zone = normalizeTimeZone((await this.client.me())?.timezone);
+      if (zone) {
+        process.env.TZ = zone;
+      }
+    } catch {
+      // The reading that follows says what is wrong with the connection.
     }
   }
 

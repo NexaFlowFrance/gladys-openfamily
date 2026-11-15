@@ -22,6 +22,8 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
     appointments: [],
     requests: [],
     nextId: 1,
+    /** The family's time zone, as OpenFamily 2.0 gives it; older servers give none. */
+    timezone: undefined,
   };
 
   server.fetch = async (input, init = {}) => {
@@ -42,7 +44,14 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
     const path = url.pathname;
 
     if (method === 'GET' && path === '/api/auth/me') {
-      return ok({ user: { id: 'u1', name: 'Alex', email: 'alex@example.org' } });
+      return ok({
+        user: {
+          id: 'u1',
+          name: 'Alex',
+          email: 'alex@example.org',
+          ...(server.timezone ? { timezone: server.timezone } : {}),
+        },
+      });
     }
     if (method === 'GET' && path === '/api/shopping') return ok(server.shopping);
     if (method === 'POST' && path === '/api/shopping') {

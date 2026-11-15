@@ -10,6 +10,13 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- With OpenFamily 2.0 or later, the integration reads the family's time zone
+  from OpenFamily itself: times are right without setting anything, whatever
+  the time zone of Gladys. The "Time zone of the family" setting still wins
+  when it is filled in, and stays useful with an older server.
+
 ## [0.1.1] - 2026-11-15
 
 ### Added

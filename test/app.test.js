@@ -356,6 +356,45 @@ test('the configuration buttons test the connection and synchronize on demand', 
   assert.equal(gladys.fake.publishedCalendarEvents.length, 2, 'forced: written again');
 });
 
+test("reads times in the family's own time zone when OpenFamily gives it", async () => {
+  const before = process.env.TZ;
+  const dentist = { id: 'a1', title: 'Dentist', start_time: '2026-11-15T09:30:00' };
+  const startOf = (gladys) =>
+    gladys.fake.calendarEvents.find((event) => event.name === 'Dentist').start;
+  try {
+    // OpenFamily 2.0 says where the family lives: 09:30 there, whatever Gladys' own zone.
+    const told = await setup();
+    told.server.timezone = 'Asia/Tokyo';
+    told.server.appointments = [dentist];
+    await told.gladys.connect();
+    assert.equal(process.env.TZ, 'Asia/Tokyo');
+    assert.equal(startOf(told.gladys), '2026-11-15T00:30:00.000Z');
+
+    // The zone set in the integration's own configuration wins.
+    const forced = await setup({
+      config: { url: URL_BASE, token: TOKEN, timezone: 'America/New_York' },
+    });
+    forced.server.timezone = 'Asia/Tokyo';
+    forced.server.appointments = [dentist];
+    await forced.gladys.connect();
+    assert.equal(startOf(forced.gladys), '2026-11-15T14:30:00.000Z');
+
+    // An older server says nothing, or something that is not a zone: nothing changes.
+    process.env.TZ = 'Europe/Paris';
+    const silent = await setup();
+    silent.server.appointments = [dentist];
+    await silent.gladys.connect();
+    assert.equal(process.env.TZ, 'Europe/Paris');
+    const odd = await setup();
+    odd.server.timezone = 'Mars/Olympus';
+    await odd.gladys.connect();
+    assert.equal(process.env.TZ, 'Europe/Paris');
+  } finally {
+    if (before === undefined) delete process.env.TZ;
+    else process.env.TZ = before;
+  }
+});
+
 test('never sends the token anywhere but to the configured server', async () => {
   const { server, gladys } = await setup();
   await gladys.connect();

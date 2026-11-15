@@ -28,8 +28,10 @@ ajoutez ou cochez un article ou une tâche, depuis un widget ou une scène.
   **jetons d'API** (Paramètres → Jetons d'API).
 - Un jeton d'API créé par un compte parent. Choisissez **Lecture et écriture** pour pouvoir
   ajouter et cocher depuis Gladys ; un jeton en **lecture seule** suffit pour afficher.
-- Le fuseau horaire réglé dans les paramètres de Gladys : OpenFamily enregistre les heures
-  locales de la famille, et l'intégration les lit dans le fuseau de Gladys.
+- Pour des heures justes : OpenFamily enregistre les heures locales de la famille. Avec
+  OpenFamily 2.0 ou plus récent, l'intégration lit le fuseau horaire de la famille dans
+  OpenFamily lui-même. Avec un serveur plus ancien, elle utilise celui réglé dans les paramètres
+  de Gladys.
 
 ## Configuration
 
@@ -55,7 +57,7 @@ Réglages facultatifs :
 - **Catégorie des articles ajoutés** : la catégorie OpenFamily donnée aux articles ajoutés depuis
   Gladys (« Autre » par défaut).
 - **Fuseau horaire de la famille** : à renseigner seulement si les heures apparaissent décalées
-  (voir le dépannage).
+  avec un OpenFamily antérieur à la 2.0 (voir le dépannage).
 
 Les rappels passent par le déclencheur natif de Gladys **« Un événement du calendrier approche »**,
 avec le calendrier OpenFamily partagé : vous choisissez le délai et filtrez sur le nom.
@@ -72,10 +74,12 @@ avec le calendrier OpenFamily partagé : vous choisissez le délai et filtrez su
   OpenFamily, ou sa version est trop ancienne pour les jetons d'API.
 - **Les événements apparaissent en double** : deux utilisateurs ont activé le calendrier.
   Désactivez-le pour l'un des deux et partagez celui qui reste avec le foyer.
-- **Les heures sont décalées** : le fuseau horaire n'est pas réglé dans les paramètres de Gladys
-  (l'intégration tourne alors en UTC), ou il diffère de celui de la famille. Réglez-le dans
-  Gladys, ou renseignez **Fuseau horaire de la famille** dans la configuration de l'intégration,
-  par exemple `Europe/Paris`.
+- **Les heures sont décalées** : avec OpenFamily 2.0 ou plus récent, vérifiez le fuseau horaire
+  de la famille dans OpenFamily, sous **Paramètres**, puis **Fuseau horaire**. Avec un serveur
+  plus ancien, le fuseau n'est pas réglé dans les paramètres de Gladys (l'intégration tourne
+  alors en UTC), ou il diffère de celui de la famille : réglez-le dans Gladys, ou renseignez
+  **Fuseau horaire de la famille** dans la configuration de l'intégration, par exemple
+  `Europe/Paris`.
 - **Un bouton répond qu'il demande une Gladys plus récente** : les formulaires des widgets
   existent depuis Gladys 5.2.
 - **Le calendrier ne se met pas à jour** : utilisez **Synchroniser maintenant** sur la page de

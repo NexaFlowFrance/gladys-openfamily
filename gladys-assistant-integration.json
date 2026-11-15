@@ -102,8 +102,8 @@
         "fr": "Fuseau horaire de la famille"
       },
       "description": {
-        "en": "Only when the times are shifted in Gladys: the time zone OpenFamily is used in. Empty: the one set in the Gladys settings.",
-        "fr": "Seulement si les heures sont décalées dans Gladys : le fuseau dans lequel OpenFamily est utilisé. Vide : celui réglé dans les paramètres de Gladys."
+        "en": "Only with an OpenFamily older than 2.0, when the times are shifted in Gladys: the time zone OpenFamily is used in. Empty: the family's own, as OpenFamily 2.0 gives it, or else the one set in the Gladys settings.",
+        "fr": "Seulement avec un OpenFamily antérieur à la 2.0, si les heures sont décalées dans Gladys : le fuseau dans lequel OpenFamily est utilisé. Vide : celui de la famille, donné par OpenFamily 2.0, sinon celui réglé dans les paramètres de Gladys."
       },
       "placeholder": {
         "en": "Europe/Paris",

@@ -26,8 +26,9 @@ off an item or a task, from a widget or a scene.
   tokens** (Settings → API tokens).
 - An API token created by a parent account. Choose **Read and write** to add and check off from
   Gladys; a **read-only** token is enough to display.
-- The time zone set in the Gladys settings: OpenFamily stores the family's local times, and the
-  integration reads them in the time zone of Gladys.
+- For the right times: OpenFamily stores the family's local times. With OpenFamily 2.0 or later,
+  the integration reads the family's time zone from OpenFamily itself. With an older server, it
+  uses the time zone set in the Gladys settings.
 
 ## Configuration
 
@@ -52,8 +53,8 @@ Optional settings:
   arrive within seconds, through OpenFamily's real-time channel.
 - **Category of added items**: the OpenFamily category given to the items added from Gladys
   ("Autre" by default).
-- **Time zone of the family**: only to fill in when the times show shifted (see the
-  troubleshooting).
+- **Time zone of the family**: only to fill in when the times show shifted with an OpenFamily
+  older than 2.0 (see the troubleshooting).
 
 Reminders go through Gladys' native trigger **"An event of the calendar is coming"**, with the
 shared OpenFamily calendar: you choose the delay and filter on the name.
@@ -70,9 +71,11 @@ shared OpenFamily calendar: you choose the delay and filter on the name.
   server, or its version is too old for API tokens.
 - **Events show twice**: two users enabled the calendar. Disable it for one of them and share the
   remaining one with the household.
-- **Times are shifted**: the time zone is not set in the Gladys settings (the integration then
-  runs in UTC), or it differs from the family's. Set it in Gladys, or fill in **Time zone of the
-  family** in the integration's configuration, for example `Europe/Paris`.
+- **Times are shifted**: with OpenFamily 2.0 or later, check the family's time zone in
+  OpenFamily, under **Settings**, then **Time zone**. With an older server, the time zone is not
+  set in the Gladys settings (the integration then runs in UTC), or it differs from the
+  family's: set it in Gladys, or fill in **Time zone of the family** in the integration's
+  configuration, for example `Europe/Paris`.
 - **A button answers that it needs a more recent Gladys**: widget forms exist since Gladys 5.2.
 - **The calendar does not update**: use **Sync now** on the integration page, and check that the
   calendar is not switched off in "My calendars".
