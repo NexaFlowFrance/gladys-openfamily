@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-15
+
 ### Added
 
 - The OpenFamily family calendar as a Gladys calendar, for the users who enable
@@ -23,4 +25,5 @@ the notes of the version's GitHub Release.
 - Changes arrive within seconds through OpenFamily's real-time channel, with a
   periodic reading as the safety net.
 
-[Unreleased]: https://github.com/NexaFlowFrance/gladys-openfamily/commits/main
+[Unreleased]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/NexaFlowFrance/gladys-openfamily/releases/tag/v0.1.0
