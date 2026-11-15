@@ -27,25 +27,37 @@
       "links": [
         {
           "url": "https://github.com/NexaFlowFrance/OpenFamily",
-          "label": { "en": "OpenFamily on GitHub", "fr": "OpenFamily sur GitHub" }
+          "label": {
+            "en": "OpenFamily on GitHub",
+            "fr": "OpenFamily sur GitHub"
+          }
         }
       ]
     },
     {
       "key": "url",
       "type": "string",
-      "label": { "en": "OpenFamily address", "fr": "Adresse d'OpenFamily" },
+      "label": {
+        "en": "OpenFamily address",
+        "fr": "Adresse d'OpenFamily"
+      },
       "description": {
         "en": "The address you open OpenFamily at, without anything after the port.",
         "fr": "L'adresse à laquelle vous ouvrez OpenFamily, sans rien après le port."
       },
-      "placeholder": { "en": "http://192.168.1.20:3000", "fr": "http://192.168.1.20:3000" },
+      "placeholder": {
+        "en": "http://192.168.1.20:3000",
+        "fr": "http://192.168.1.20:3000"
+      },
       "required": true
     },
     {
       "key": "token",
       "type": "secret",
-      "label": { "en": "API token", "fr": "Jeton d'API" },
+      "label": {
+        "en": "API token",
+        "fr": "Jeton d'API"
+      },
       "description": {
         "en": "Starts with ofk_. A read-only token shows the data; adding from Gladys needs \"Read and write\".",
         "fr": "Commence par ofk_. Un jeton en lecture seule affiche les données ; ajouter depuis Gladys demande « Lecture et écriture »."
@@ -55,7 +67,10 @@
     {
       "key": "poll_minutes",
       "type": "number",
-      "label": { "en": "Refresh interval (min)", "fr": "Intervalle d'actualisation (min)" },
+      "label": {
+        "en": "Refresh interval (min)",
+        "fr": "Intervalle d'actualisation (min)"
+      },
       "description": {
         "en": "How often OpenFamily is read. Changes usually arrive sooner, through its real-time channel.",
         "fr": "Fréquence de lecture d'OpenFamily. Les changements arrivent en général plus tôt, par son canal temps réel."
@@ -68,20 +83,43 @@
     {
       "key": "shopping_category",
       "type": "string",
-      "label": { "en": "Category of added items", "fr": "Catégorie des articles ajoutés" },
+      "label": {
+        "en": "Category of added items",
+        "fr": "Catégorie des articles ajoutés"
+      },
       "description": {
         "en": "The OpenFamily category given to the items added from Gladys.",
         "fr": "La catégorie OpenFamily donnée aux articles ajoutés depuis Gladys."
       },
       "required": false,
       "default": "Autre"
+    },
+    {
+      "key": "timezone",
+      "type": "string",
+      "label": {
+        "en": "Time zone of the family",
+        "fr": "Fuseau horaire de la famille"
+      },
+      "description": {
+        "en": "Only when the times are shifted in Gladys: the time zone OpenFamily is used in. Empty: the one set in the Gladys settings.",
+        "fr": "Seulement si les heures sont décalées dans Gladys : le fuseau dans lequel OpenFamily est utilisé. Vide : celui réglé dans les paramètres de Gladys."
+      },
+      "placeholder": {
+        "en": "Europe/Paris",
+        "fr": "Europe/Paris"
+      },
+      "required": false
     }
   ],
   "account_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "The family calendar", "fr": "Le calendrier familial" },
+      "label": {
+        "en": "The family calendar",
+        "fr": "Le calendrier familial"
+      },
       "description": {
         "en": "Enable to receive the OpenFamily calendar as a calendar of yours in Gladys. It starts private: share it with the household below to see it on the dashboard and use it in scenes. The calendar is the same for the whole family: one user enabling it is enough, a second one would show every event twice.",
         "fr": "Activez pour recevoir le calendrier d'OpenFamily comme l'un de vos calendriers dans Gladys. Il est privé au départ : partagez-le avec le foyer ci-dessous pour le voir sur le tableau de bord et l'utiliser dans les scènes. Le calendrier est le même pour toute la famille : il suffit qu'un seul utilisateur l'active, un second afficherait chaque événement en double."
@@ -91,12 +129,18 @@
   "actions": [
     {
       "key": "test_connection",
-      "label": { "en": "Test the connection", "fr": "Tester la connexion" },
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion"
+      },
       "timeout_seconds": 30
     },
     {
       "key": "sync_now",
-      "label": { "en": "Sync now", "fr": "Synchroniser maintenant" },
+      "label": {
+        "en": "Sync now",
+        "fr": "Synchroniser maintenant"
+      },
       "timeout_seconds": 120
     }
   ],
@@ -112,45 +156,95 @@
         "fr": "Quelqu'un a ajouté un article à la liste de courses d'OpenFamily."
       },
       "variables": [
-        { "key": "item", "type": "string", "label": { "en": "Item", "fr": "Article" } },
-        { "key": "quantity", "type": "string", "label": { "en": "Quantity", "fr": "Quantité" } },
+        {
+          "key": "item",
+          "type": "string",
+          "label": {
+            "en": "Item",
+            "fr": "Article"
+          }
+        },
+        {
+          "key": "quantity",
+          "type": "string",
+          "label": {
+            "en": "Quantity",
+            "fr": "Quantité"
+          }
+        },
         {
           "key": "count",
           "type": "number",
-          "label": { "en": "Items to buy", "fr": "Articles à acheter" }
+          "label": {
+            "en": "Items to buy",
+            "fr": "Articles à acheter"
+          }
         }
       ]
     },
     {
       "key": "task_completed",
-      "label": { "en": "Task completed", "fr": "Tâche terminée" },
+      "label": {
+        "en": "Task completed",
+        "fr": "Tâche terminée"
+      },
       "description": {
         "en": "A task of OpenFamily was marked as done.",
         "fr": "Une tâche d'OpenFamily a été marquée comme terminée."
       },
       "variables": [
-        { "key": "title", "type": "string", "label": { "en": "Task", "fr": "Tâche" } },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Task",
+            "fr": "Tâche"
+          }
+        },
         {
           "key": "count",
           "type": "number",
-          "label": { "en": "Tasks left to do", "fr": "Tâches restantes" }
+          "label": {
+            "en": "Tasks left to do",
+            "fr": "Tâches restantes"
+          }
         }
       ]
     },
     {
       "key": "task_due",
-      "label": { "en": "Task due today", "fr": "Tâche à faire aujourd'hui" },
+      "label": {
+        "en": "Task due today",
+        "fr": "Tâche à faire aujourd'hui"
+      },
       "description": {
         "en": "A task of OpenFamily reaches its due date, once per task on that day.",
         "fr": "Une tâche d'OpenFamily arrive à échéance, une fois par tâche ce jour-là."
       },
       "variables": [
-        { "key": "title", "type": "string", "label": { "en": "Task", "fr": "Tâche" } },
-        { "key": "due", "type": "string", "label": { "en": "Due date", "fr": "Échéance" } },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Task",
+            "fr": "Tâche"
+          }
+        },
+        {
+          "key": "due",
+          "type": "string",
+          "label": {
+            "en": "Due date",
+            "fr": "Échéance"
+          }
+        },
         {
           "key": "count",
           "type": "number",
-          "label": { "en": "Tasks left to do", "fr": "Tâches restantes" }
+          "label": {
+            "en": "Tasks left to do",
+            "fr": "Tâches restantes"
+          }
         }
       ]
     }
@@ -158,7 +252,10 @@
   "scene_actions": [
     {
       "key": "add_shopping_item",
-      "label": { "en": "Add to the shopping list", "fr": "Ajouter à la liste de courses" },
+      "label": {
+        "en": "Add to the shopping list",
+        "fr": "Ajouter à la liste de courses"
+      },
       "description": {
         "en": "Adds an item to the OpenFamily shopping list.",
         "fr": "Ajoute un article à la liste de courses d'OpenFamily."
@@ -168,30 +265,55 @@
         {
           "key": "item",
           "type": "string",
-          "label": { "en": "Item", "fr": "Article" },
-          "placeholder": { "en": "Milk", "fr": "Lait" },
+          "label": {
+            "en": "Item",
+            "fr": "Article"
+          },
+          "placeholder": {
+            "en": "Milk",
+            "fr": "Lait"
+          },
           "required": true
         },
         {
           "key": "quantity",
           "type": "string",
-          "label": { "en": "Quantity", "fr": "Quantité" },
-          "placeholder": { "en": "2 L", "fr": "2 L" },
+          "label": {
+            "en": "Quantity",
+            "fr": "Quantité"
+          },
+          "placeholder": {
+            "en": "2 L",
+            "fr": "2 L"
+          },
           "required": false
         }
       ],
       "outputs": [
-        { "key": "item", "type": "string", "label": { "en": "Item", "fr": "Article" } },
+        {
+          "key": "item",
+          "type": "string",
+          "label": {
+            "en": "Item",
+            "fr": "Article"
+          }
+        },
         {
           "key": "count",
           "type": "number",
-          "label": { "en": "Items to buy", "fr": "Articles à acheter" }
+          "label": {
+            "en": "Items to buy",
+            "fr": "Articles à acheter"
+          }
         }
       ]
     },
     {
       "key": "add_task",
-      "label": { "en": "Add a task", "fr": "Ajouter une tâche" },
+      "label": {
+        "en": "Add a task",
+        "fr": "Ajouter une tâche"
+      },
       "description": {
         "en": "Adds a task to OpenFamily.",
         "fr": "Ajoute une tâche à OpenFamily."
@@ -201,29 +323,51 @@
         {
           "key": "title",
           "type": "string",
-          "label": { "en": "Task", "fr": "Tâche" },
-          "placeholder": { "en": "Take out the trash", "fr": "Sortir les poubelles" },
+          "label": {
+            "en": "Task",
+            "fr": "Tâche"
+          },
+          "placeholder": {
+            "en": "Take out the trash",
+            "fr": "Sortir les poubelles"
+          },
           "required": true
         },
         {
           "key": "due_date",
           "type": "string",
-          "label": { "en": "Due date (YYYY-MM-DD)", "fr": "Échéance (AAAA-MM-JJ)" },
+          "label": {
+            "en": "Due date (YYYY-MM-DD)",
+            "fr": "Échéance (AAAA-MM-JJ)"
+          },
           "required": false
         }
       ],
       "outputs": [
-        { "key": "title", "type": "string", "label": { "en": "Task", "fr": "Tâche" } },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Task",
+            "fr": "Tâche"
+          }
+        },
         {
           "key": "count",
           "type": "number",
-          "label": { "en": "Tasks left to do", "fr": "Tâches restantes" }
+          "label": {
+            "en": "Tasks left to do",
+            "fr": "Tâches restantes"
+          }
         }
       ]
     },
     {
       "key": "get_shopping_list",
-      "label": { "en": "Read the shopping list", "fr": "Lire la liste de courses" },
+      "label": {
+        "en": "Read the shopping list",
+        "fr": "Lire la liste de courses"
+      },
       "description": {
         "en": "Gives the items to buy to the next actions of the scene.",
         "fr": "Donne les articles à acheter aux actions suivantes de la scène."
@@ -233,14 +377,27 @@
         {
           "key": "count",
           "type": "number",
-          "label": { "en": "Items to buy", "fr": "Articles à acheter" }
+          "label": {
+            "en": "Items to buy",
+            "fr": "Articles à acheter"
+          }
         },
-        { "key": "items", "type": "string", "label": { "en": "The items", "fr": "Les articles" } }
+        {
+          "key": "items",
+          "type": "string",
+          "label": {
+            "en": "The items",
+            "fr": "Les articles"
+          }
+        }
       ]
     },
     {
       "key": "get_tasks",
-      "label": { "en": "Read the tasks", "fr": "Lire les tâches" },
+      "label": {
+        "en": "Read the tasks",
+        "fr": "Lire les tâches"
+      },
       "description": {
         "en": "Gives the tasks left to do to the next actions of the scene.",
         "fr": "Donne les tâches restantes aux actions suivantes de la scène."
@@ -250,21 +407,37 @@
         {
           "key": "count",
           "type": "number",
-          "label": { "en": "Tasks left to do", "fr": "Tâches restantes" }
+          "label": {
+            "en": "Tasks left to do",
+            "fr": "Tâches restantes"
+          }
         },
         {
           "key": "due_today",
           "type": "number",
-          "label": { "en": "Due today", "fr": "À faire aujourd'hui" }
+          "label": {
+            "en": "Due today",
+            "fr": "À faire aujourd'hui"
+          }
         },
-        { "key": "list", "type": "string", "label": { "en": "The tasks", "fr": "Les tâches" } }
+        {
+          "key": "list",
+          "type": "string",
+          "label": {
+            "en": "The tasks",
+            "fr": "Les tâches"
+          }
+        }
       ]
     }
   ],
   "widgets": [
     {
       "key": "today",
-      "label": { "en": "OpenFamily: today", "fr": "OpenFamily : aujourd'hui" },
+      "label": {
+        "en": "OpenFamily: today",
+        "fr": "OpenFamily : aujourd'hui"
+      },
       "description": {
         "en": "Today's appointments of the family.",
         "fr": "Les rendez-vous du jour de la famille."
@@ -273,7 +446,10 @@
     },
     {
       "key": "shopping",
-      "label": { "en": "OpenFamily: shopping list", "fr": "OpenFamily : liste de courses" },
+      "label": {
+        "en": "OpenFamily: shopping list",
+        "fr": "OpenFamily : liste de courses"
+      },
       "description": {
         "en": "The items to buy, with buttons to add one and check one off.",
         "fr": "Les articles à acheter, avec des boutons pour en ajouter et en cocher."
@@ -283,7 +459,10 @@
     },
     {
       "key": "tasks",
-      "label": { "en": "OpenFamily: tasks", "fr": "OpenFamily : tâches" },
+      "label": {
+        "en": "OpenFamily: tasks",
+        "fr": "OpenFamily : tâches"
+      },
       "description": {
         "en": "The tasks left to do, with buttons to add one and mark one as done.",
         "fr": "Les tâches à faire, avec des boutons pour en ajouter et en terminer."

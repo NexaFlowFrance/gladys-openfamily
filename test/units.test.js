@@ -14,6 +14,7 @@ test('normalizes the configuration, with the manifest defaults', () => {
     token: '',
     pollMinutes: DEFAULT_CONFIG.poll_minutes,
     shoppingCategory: DEFAULT_CONFIG.shopping_category,
+    timeZone: '',
   });
   const config = normalizeConfig({
     url: ' https://family.example.org// ',
@@ -26,7 +27,10 @@ test('normalizes the configuration, with the manifest defaults', () => {
     token: 'ofk_x',
     pollMinutes: 60,
     shoppingCategory: 'Épicerie',
+    timeZone: '',
   });
+  assert.equal(normalizeConfig({ timezone: ' Europe/Paris ' }).timeZone, 'Europe/Paris');
+  assert.equal(normalizeConfig({ timezone: 'Paris' }).timeZone, '');
   assert.equal(isConfigured(config), true);
   // Not an address a request can be sent to: treated as missing.
   assert.equal(normalizeConfig({ url: 'ftp://nas', token: 'ofk_x' }).url, '');

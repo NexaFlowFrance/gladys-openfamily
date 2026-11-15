@@ -29,6 +29,17 @@ export function normalizeUrl(value) {
   }
 }
 
+/** An IANA time zone name the runtime knows ("Europe/Paris"), or ''. */
+export function normalizeTimeZone(value) {
+  const zone = text(value);
+  if (!zone) return '';
+  try {
+    return new Intl.DateTimeFormat('en', { timeZone: zone }).resolvedOptions().timeZone;
+  } catch {
+    return '';
+  }
+}
+
 export function normalizeConfig(raw = {}) {
   const source = raw ?? {};
   return {
@@ -36,6 +47,7 @@ export function normalizeConfig(raw = {}) {
     token: text(source.token),
     pollMinutes: number(source.poll_minutes, DEFAULT_CONFIG.poll_minutes, 1, 60),
     shoppingCategory: text(source.shopping_category) || DEFAULT_CONFIG.shopping_category,
+    timeZone: normalizeTimeZone(source.timezone),
   };
 }
 

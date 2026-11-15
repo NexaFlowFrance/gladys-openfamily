@@ -10,6 +10,11 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- An optional "Time zone of the family" setting, for a Gladys whose time zone
+  was never set: its integrations then run in UTC and the times showed shifted.
+
 ## [0.1.0] - 2026-11-15
 
 ### Added

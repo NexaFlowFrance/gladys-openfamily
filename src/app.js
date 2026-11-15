@@ -107,6 +107,13 @@ export class OpenFamilyApp {
     this.reset();
     this.config = normalizeConfig(rawConfig);
     this.client = new OpenFamilyClient({ ...this.config, fetchImpl: this.fetchImpl });
+    // OpenFamily's date-times are local to the family. Gladys starts this
+    // container in the time zone of its settings, and in UTC when it was never
+    // set there: the optional setting makes the whole process read in the
+    // family's zone (calendar, "today", due dates alike).
+    if (this.config.timeZone) {
+      process.env.TZ = this.config.timeZone;
+    }
     if (!isConfigured(this.config)) {
       await this.status(new OpenFamilyError(ERRORS.NOT_CONFIGURED));
       return;
