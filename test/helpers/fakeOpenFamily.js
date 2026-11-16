@@ -122,7 +122,19 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
       Object.assign(entry, body);
       return ok(entry);
     }
-    if (method === 'GET' && path === '/api/appointments') return ok(server.appointments);
+    if (method === 'GET' && path === '/api/appointments') {
+      // As the server does: what overlaps the range asked for, both ends
+      // included, in the local date-times it stores.
+      const from = url.searchParams.get('start_date') ?? '';
+      const to = url.searchParams.get('end_date') ?? '9999';
+      return ok(
+        server.appointments.filter((appointment) => {
+          const start = String(appointment.start_time ?? '');
+          const end = String(appointment.end_time ?? '') || start;
+          return start <= to && (end >= from || start >= from);
+        }),
+      );
+    }
     return json(404, { success: false, error: 'Not found' });
   };
 

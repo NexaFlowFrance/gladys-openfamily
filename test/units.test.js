@@ -20,6 +20,7 @@ import { splitWindows, syncWindow, toGladysEvent } from '../src/calendar.js';
 import { createStateStore } from '../src/state.js';
 import { assignees, findMember, plainName } from '../src/family.js';
 import { dayMeals, mealName } from '../src/meals.js';
+import { NO_DUE, dueChoices } from '../src/widgets.js';
 import { T, errorText } from '../src/i18n.js';
 
 test('normalizes the configuration, with the manifest defaults', () => {
@@ -218,6 +219,32 @@ test('reads the meals of a day in the order of the day', () => {
   assert.deepEqual(dayMeals(undefined, '2026-11-15'), []);
   assert.equal(mealName({ recipe: { name: 'Soup' }, custom_meal: 'x' }), 'Soup');
   assert.equal(mealName({}), '');
+});
+
+test('offers the due dates a tap can pick, Saturday only when it is not one of them', () => {
+  const dates = (today) => dueChoices(today).map((choice) => choice.value);
+  // A Wednesday: Saturday is three days away.
+  assert.deepEqual(dates('2026-11-18'), [
+    NO_DUE,
+    '2026-11-18',
+    '2026-11-19',
+    '2026-11-21',
+    '2026-11-25',
+  ]);
+  // A Friday and a Saturday: Saturday is already "tomorrow" or "today".
+  assert.deepEqual(dates('2026-11-20'), [NO_DUE, '2026-11-20', '2026-11-21', '2026-11-27']);
+  assert.deepEqual(dates('2026-11-21'), [NO_DUE, '2026-11-21', '2026-11-22', '2026-11-28']);
+  // Across the end of a month and of a year.
+  assert.deepEqual(dates('2026-12-30'), [
+    NO_DUE,
+    '2026-12-30',
+    '2026-12-31',
+    '2027-01-02',
+    '2027-01-06',
+  ]);
+  for (const choice of dueChoices('2026-11-18')) {
+    assert.ok(choice.label.en && choice.label.fr);
+  }
 });
 
 const idFor = (id) => `ext:x:u:${id}`;

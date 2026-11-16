@@ -11,7 +11,8 @@ the household uses every day:
   full-day events are supported, over one month of history and twelve months ahead.
 - **Four dashboard widgets**: today's appointments, the shopping list, the tasks and the meals.
   The shopping list and the tasks have a button to add an entry and a button to check one off.
-  The tasks widget can be the one of a single family member.
+  The tasks widget can be the one of a single family member. On a day without an appointment,
+  the first one shows the next three.
 - **Five scene actions**: add an item to the shopping list, add a task, read the shopping list,
   read the tasks, read the menu. The last three hand their result to the next actions of the
   scene (to announce it on a speaker, for instance).
@@ -56,6 +57,10 @@ name as it is written on the Family page of OpenFamily: the widget then shows on
 assigned to that person, and a task added from this widget is assigned to them. Add the widget
 once per child to give each of them their own list. Without a first name, the widget shows the
 tasks of the whole family, with the name of the person each one is assigned to.
+
+**Adding a task.** The **Add** button of the widget offers the due date in a list: no due date,
+today, tomorrow, Saturday or in a week. For another day, type the date as YYYY-MM-DD in the
+field below: it wins over the list.
 
 **Meals.** The "OpenFamily: meals" widget shows the meals planned today and tomorrow in the meal
 planner of OpenFamily. The "Read the menu" scene action hands the menu of today or tomorrow to
@@ -107,7 +112,9 @@ The message shown on the integration page says what is wrong:
 - **"OpenFamily refused the API token"**: the token was revoked, or the account that created it
   left the family. Create a new one and paste it in the configuration.
 - **"This API token is read-only"**: displaying works, but adding and checking off need a **Read
-  and write** token.
+  and write** token. After this message, the **Add**, **Check off** and **Done** buttons leave
+  the widgets; they come back as soon as a **Read and write** token is saved in the
+  configuration.
 - **"OpenFamily answered with an error"**: the address is probably not the one of an OpenFamily
   server.
 

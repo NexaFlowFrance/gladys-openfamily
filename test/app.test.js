@@ -241,6 +241,87 @@ test('widget buttons add and check off, and say so', async () => {
   assert.ok(JSON.stringify(ack.data).includes('plus récente'));
 });
 
+test('offers the due date of a new task in a list, a typed date winning over it', async () => {
+  const { server, gladys } = await setup();
+  await gladys.connect();
+  const content = (await gladys.fake.widgetGet(WIDGETS.TASKS)).data.content;
+  assert.deepEqual(validateWidgetContent(content), []);
+  const add = content.components.find(
+    (component) => component.action?.key === WIDGET_ACTIONS.ADD_TASK,
+  );
+  const due = add.action.fields.find((field) => field.key === 'due');
+  // 15 November 2026 is a Sunday: Saturday is six days away, a week is seven.
+  assert.deepEqual(
+    due.options.map((option) => [option.value, option.label.fr]),
+    [
+      ['none', 'Sans échéance'],
+      ['2026-11-15', "Aujourd'hui"],
+      ['2026-11-16', 'Demain'],
+      ['2026-11-21', 'Samedi'],
+      ['2026-11-22', 'Dans une semaine'],
+    ],
+  );
+  assert.equal(due.default, 'none');
+
+  const tap = (values) =>
+    gladys.fake.widgetAction(WIDGETS.TASKS, WIDGET_ACTIONS.ADD_TASK, {}, { settings: {}, values });
+  await tap({ title: 'Homework', due: '2026-11-16' });
+  await tap({ title: 'Someday', due: 'none' });
+  await tap({ title: 'Christmas tree', due: '2026-11-16', due_date: '2026-12-12' });
+  assert.deepEqual(
+    server.tasks.map((task) => [task.title, task.due_date]),
+    [
+      ['Homework', '2026-11-16'],
+      ['Someday', null],
+      ['Christmas tree', '2026-12-12'],
+    ],
+  );
+  // Anything else than a date of the list is no due date, never a bad request.
+  await tap({ title: 'Odd', due: 'next year' });
+  assert.equal(server.tasks.at(-1).due_date, null);
+});
+
+test('shows the next appointments on a day without one', async () => {
+  const { server, gladys } = await setup();
+  server.appointments = [
+    { id: 'a0', title: 'Yesterday', start_time: '2026-11-14T09:00:00' },
+    { id: 'a4', title: 'Later still', start_time: '2026-12-01T10:00:00' },
+    { id: 'a3', title: 'Dentist', start_time: '2026-11-25T09:30:00' },
+    { id: 'a2', title: 'School trip', start_time: '2026-11-20T00:00:00', is_all_day: true },
+    { id: 'a1', title: 'Choir', start_time: '2026-11-16T18:00:00' },
+    { id: 'a5', title: 'Next year', start_time: '2027-03-01T10:00:00' },
+  ];
+  await gladys.connect();
+  const empty = (await gladys.fake.widgetGet(WIDGETS.TODAY)).data.content;
+  assert.deepEqual(validateWidgetContent(empty), []);
+  assert.ok(texts(empty).includes('À venir'));
+  // The three soonest, each with its day, and its time when it has one.
+  assert.deepEqual(
+    empty.components
+      .find((component) => component.type === 'status')
+      .items.map((row) => [row.label, row.value.fr, row.value.en]),
+    [
+      ['Choir', 'Demain 18:00', 'Tomorrow 18:00'],
+      ['School trip', 'ven. 20 nov.', 'Fri, Nov 20'],
+      ['Dentist', 'mer. 25 nov. 09:30', 'Wed, Nov 25 09:30'],
+    ],
+  );
+
+  // A day with an appointment shows that day, and asks for nothing more.
+  server.appointments.push({ id: 'a6', title: 'Market', start_time: '2026-11-15T11:00:00' });
+  const before = asked(server, '/api/appointments').length;
+  const busy = (await gladys.fake.widgetGet(WIDGETS.TODAY)).data.content;
+  assert.ok(texts(busy).includes('Market') && !texts(busy).includes('Choir'));
+  assert.equal(asked(server, '/api/appointments').length, before + 1);
+
+  // Nothing in the coming month either: the plain empty card.
+  server.appointments = [{ id: 'a5', title: 'Next year', start_time: '2027-03-01T10:00:00' }];
+  const nothing = (await gladys.fake.widgetGet(WIDGETS.TODAY)).data.content;
+  assert.ok(
+    texts(nothing).includes("Rien de prévu aujourd'hui.") && !texts(nothing).includes('Next'),
+  );
+});
+
 test('scene actions write to OpenFamily and return their declared outputs', async () => {
   const { server, gladys } = await setup();
   server.tasks = [{ id: 't1', title: 'Trash', due_date: '2026-11-15', is_completed: false }];
@@ -662,6 +743,40 @@ test('says what is wrong: not configured, unreachable, token refused, read-only 
   );
 });
 
+test('stops offering to write once OpenFamily said the token is read-only', async () => {
+  const { server, gladys } = await setup({ scope: 'read' });
+  server.shopping = [{ id: 'i1', name: 'Milk', is_checked: false }];
+  server.tasks = [{ id: 't1', title: 'Trash', is_completed: false }];
+  await gladys.connect();
+  const buttons = async (key) =>
+    (await gladys.fake.widgetGet(key)).data.content.components.filter(
+      (component) => component.type === 'button',
+    ).length;
+  // Nothing says beforehand what a token may do: the buttons are there.
+  assert.deepEqual([await buttons(WIDGETS.SHOPPING), await buttons(WIDGETS.TASKS)], [2, 2]);
+
+  await gladys.fake.widgetAction(
+    WIDGETS.TASKS,
+    WIDGET_ACTIONS.COMPLETE_TASK,
+    {},
+    { settings: {}, values: { task: 't1' } },
+  );
+  assert.deepEqual([await buttons(WIDGETS.SHOPPING), await buttons(WIDGETS.TASKS)], [0, 0]);
+  // The open dashboards are told at once, and the lists are still shown.
+  assert.deepEqual([...new Set(gladys.fake.widgetRefreshes)].sort(), [
+    WIDGETS.SHOPPING,
+    WIDGETS.TASKS,
+  ]);
+  const shopping = (await gladys.fake.widgetGet(WIDGETS.SHOPPING)).data.content;
+  assert.deepEqual(validateWidgetContent(shopping), []);
+  assert.ok(texts(shopping).includes('Milk'));
+
+  // A token that can write is saved in the settings: the buttons come back.
+  server.scope = 'write';
+  await gladys.fake.configUpdated({ url: URL_BASE, token: TOKEN });
+  assert.deepEqual([await buttons(WIDGETS.SHOPPING), await buttons(WIDGETS.TASKS)], [2, 2]);
+});
+
 test('tells an old server from a refused token, and why a server cannot be reached', async () => {
   const status = (gladys) => gladys.fake.connectionStatus.message;
 
@@ -818,6 +933,22 @@ test("reads times in the family's own time zone when OpenFamily gives it", async
     odd.server.timezone = 'Mars/Olympus';
     await odd.gladys.connect();
     assert.equal(process.env.TZ, 'Europe/Paris');
+
+    // OpenFamily could not be asked when the integration started: the zone is
+    // asked again with the next reading, and the calendar is put right.
+    const late = await setup();
+    late.server.timezone = 'Asia/Tokyo';
+    late.server.appointments = [dentist];
+    late.server.down = true;
+    await late.gladys.connect();
+    assert.equal(process.env.TZ, 'Europe/Paris');
+    late.server.down = false;
+    await late.app.poll();
+    assert.equal(process.env.TZ, 'Asia/Tokyo');
+    assert.equal(startOf(late.gladys), '2026-11-15T00:30:00.000Z');
+    const asks = asked(late.server, '/api/auth/me').length;
+    await late.app.poll();
+    assert.equal(asked(late.server, '/api/auth/me').length, asks, 'known: not asked again');
   } finally {
     if (before === undefined) delete process.env.TZ;
     else process.env.TZ = before;

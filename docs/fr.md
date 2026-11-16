@@ -12,7 +12,8 @@ dans Gladys ce qui sert au quotidien dans la maison :
   douze mois à venir.
 - **Quatre widgets** de tableau de bord : les rendez-vous du jour, la liste de courses, les tâches
   et les repas. Les courses et les tâches ont un bouton pour ajouter et un bouton pour cocher. Le
-  widget des tâches peut être celui d'un seul membre de la famille.
+  widget des tâches peut être celui d'un seul membre de la famille. Un jour sans rendez-vous, le
+  premier affiche les trois prochains.
 - **Cinq actions de scène** : ajouter un article à la liste de courses, ajouter une tâche, lire
   la liste de courses, lire les tâches, lire le menu. Les trois dernières donnent leur résultat
   aux actions suivantes de la scène (par exemple pour l'annoncer sur une enceinte).
@@ -59,6 +60,10 @@ un prénom tel qu'il est écrit sur la page Famille d'OpenFamily : le widget n'a
 tâches attribuées à cette personne, et une tâche ajoutée depuis ce widget lui est attribuée.
 Ajoutez le widget une fois par enfant pour donner à chacun sa liste. Sans prénom, le widget montre
 les tâches de toute la famille, avec le nom de la personne à qui chacune est attribuée.
+
+**Ajouter une tâche.** Le bouton **Ajouter** du widget propose l'échéance dans une liste : sans
+échéance, aujourd'hui, demain, samedi ou dans une semaine. Pour un autre jour, saisissez la date
+au format AAAA-MM-JJ dans le champ du dessous : elle l'emporte sur la liste.
 
 **Les repas.** Le widget « OpenFamily : repas » affiche les repas prévus aujourd'hui et demain
 dans le planning des repas d'OpenFamily. L'action de scène « Lire le menu » donne aux actions
@@ -113,7 +118,9 @@ Le message affiché sur la page de l'intégration dit ce qui ne va pas :
 - **« OpenFamily a refusé le jeton d'API »** : le jeton a été révoqué, ou le compte qui l'a créé a
   quitté la famille. Créez-en un nouveau et collez-le dans la configuration.
 - **« Ce jeton d'API est en lecture seule »** : l'affichage fonctionne, mais ajouter et cocher
-  demandent un jeton **Lecture et écriture**.
+  demandent un jeton **Lecture et écriture**. Après ce message, les boutons **Ajouter**,
+  **Cocher** et **Terminer** disparaissent des widgets ; ils reviennent dès qu'un jeton
+  **Lecture et écriture** est enregistré dans la configuration.
 - **« OpenFamily a répondu par une erreur »** : l'adresse n'est sans doute pas celle d'un serveur
   OpenFamily.
 

@@ -7,7 +7,7 @@
 🇬🇧 <a href="README.md">English</a> · 🇫🇷 <strong>Français</strong>
 
 [![Intégration officielle par NexaFlow](https://img.shields.io/badge/Int%C3%A9gration%20officielle-par%20NexaFlow-ff605c)](https://nexaflow.fr)
-[![Release](https://img.shields.io/github/v/release/NexaFlowFrance/gladys-openfamily?color=16a34a&label=version)](https://github.com/NexaFlowFrance/gladys-openfamily/releases/latest)
+[![Release](https://img.shields.io/github/v/release/NexaFlowFrance/gladys-openfamily?color=dc4a60&label=version)](https://github.com/NexaFlowFrance/gladys-openfamily/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/NexaFlowFrance/gladys-openfamily/ci.yml?branch=main&label=CI)](https://github.com/NexaFlowFrance/gladys-openfamily/actions/workflows/ci.yml)
 [![Gladys Assistant](https://img.shields.io/badge/Gladys%20Assistant-5.2%2B-0ea5e9)](https://gladysassistant.com)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/NexaFlowFrance/gladys-openfamily/pkgs/container/gladys-openfamily)

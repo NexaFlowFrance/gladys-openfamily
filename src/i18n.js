@@ -100,6 +100,11 @@ export const T = {
   widget: {
     today: { en: 'Today', fr: "Aujourd'hui" },
     nothingToday: { en: 'Nothing planned today.', fr: "Rien de prévu aujourd'hui." },
+    nothingTodayNext: {
+      en: 'Nothing planned today. Coming up:',
+      fr: "Rien de prévu aujourd'hui. À venir :",
+    },
+    tomorrowDay: { en: 'Tomorrow', fr: 'Demain' },
     allDay: { en: 'All day', fr: 'Journée' },
     shopping: { en: 'Shopping list', fr: 'Liste de courses' },
     shoppingEmpty: { en: 'The list is empty.', fr: 'La liste est vide.' },
@@ -134,7 +139,13 @@ export const T = {
     quantityPlaceholder: { en: '2 L', fr: '2 L' },
     task: { en: 'Task', fr: 'Tâche' },
     taskPlaceholder: { en: 'Take out the trash', fr: 'Sortir les poubelles' },
-    dueDate: { en: 'Due date (YYYY-MM-DD)', fr: 'Échéance (AAAA-MM-JJ)' },
+    due: { en: 'Due', fr: 'Échéance' },
+    dueNone: { en: 'No due date', fr: 'Sans échéance' },
+    dueToday: { en: 'Today', fr: "Aujourd'hui" },
+    dueTomorrow: { en: 'Tomorrow', fr: 'Demain' },
+    dueSaturday: { en: 'Saturday', fr: 'Samedi' },
+    dueNextWeek: { en: 'In a week', fr: 'Dans une semaine' },
+    dueDate: { en: 'Or a date (YYYY-MM-DD)', fr: 'Ou une date (AAAA-MM-JJ)' },
     needsUpdate: {
       en: 'This button needs a more recent Gladys.',
       fr: 'Ce bouton demande une version plus récente de Gladys.',

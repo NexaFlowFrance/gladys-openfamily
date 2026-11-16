@@ -10,6 +10,29 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- The form that adds a task from the tasks widget offers the due date in a
+  list: no due date, today, tomorrow, Saturday or in a week. A date can still
+  be typed as YYYY-MM-DD, and wins over the list.
+- On a day without an appointment, the "Today" widget shows the next three of
+  the coming month, each with its day, in place of an empty card.
+
+### Fixed
+
+- When OpenFamily could not be reached while the integration started, the
+  family's time zone was never asked again: every time stayed read in the zone
+  of Gladys, an hour or two off on a Gladys left in UTC, until the next
+  restart. The zone is now asked again with the next reading.
+
+### Changed
+
+- Once OpenFamily has refused a write because the API token is read-only, the
+  widgets stop showing the buttons that add and check off. They come back when
+  a "Read and write" token is saved.
+- The calendar pushed to Gladys takes OpenFamily's own color, in place of the
+  green of the first versions.
+
 ## [0.3.0] - 2026-11-16
 
 ### Added
