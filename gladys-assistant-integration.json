@@ -226,6 +226,14 @@
           }
         },
         {
+          "key": "points",
+          "type": "number",
+          "label": {
+            "en": "Points",
+            "fr": "Points"
+          }
+        },
+        {
           "key": "count",
           "type": "number",
           "label": {
@@ -268,6 +276,14 @@
           "label": {
             "en": "Assigned to",
             "fr": "Attribuée à"
+          }
+        },
+        {
+          "key": "points",
+          "type": "number",
+          "label": {
+            "en": "Points",
+            "fr": "Points"
           }
         },
         {
@@ -587,6 +603,177 @@
           }
         }
       ]
+    },
+    {
+      "key": "get_points",
+      "label": {
+        "en": "Read the points",
+        "fr": "Lire les points"
+      },
+      "description": {
+        "en": "Gives the reward points to the next actions of the scene.",
+        "fr": "Donne les points de récompense aux actions suivantes de la scène."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "member",
+          "type": "string",
+          "label": {
+            "en": "Of (first name)",
+            "fr": "De (prénom)"
+          },
+          "description": {
+            "en": "The first name of a family member, as written in OpenFamily, to read only that person's points. Empty: everyone's.",
+            "fr": "Le prénom d'un membre de la famille, tel qu'il est écrit dans OpenFamily, pour ne lire que ses points. Vide : ceux de tout le monde."
+          },
+          "placeholder": {
+            "en": "Léa",
+            "fr": "Léa"
+          },
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "points",
+          "type": "number",
+          "label": {
+            "en": "Points",
+            "fr": "Points"
+          }
+        },
+        {
+          "key": "streak",
+          "type": "number",
+          "label": {
+            "en": "Days in a row",
+            "fr": "Jours de suite"
+          }
+        },
+        {
+          "key": "summary",
+          "type": "string",
+          "label": {
+            "en": "Everyone's points",
+            "fr": "Les points de chacun"
+          }
+        }
+      ]
+    },
+    {
+      "key": "add_note",
+      "label": {
+        "en": "Stick a note on the fridge",
+        "fr": "Coller un mot sur le frigo"
+      },
+      "description": {
+        "en": "Adds a note to the family notes of OpenFamily, where everyone reads it in the app.",
+        "fr": "Ajoute un mot aux mots de la famille d'OpenFamily, où chacun le lit dans l'application."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "text",
+          "type": "string",
+          "label": {
+            "en": "Note",
+            "fr": "Mot"
+          },
+          "placeholder": {
+            "en": "The washing machine is done",
+            "fr": "Le lave-linge a terminé"
+          },
+          "required": true
+        },
+        {
+          "key": "expires",
+          "type": "select",
+          "label": {
+            "en": "Stays",
+            "fr": "Reste affiché"
+          },
+          "options": [
+            {
+              "value": "today",
+              "label": {
+                "en": "Until tonight",
+                "fr": "Jusqu'à ce soir"
+              }
+            },
+            {
+              "value": "day",
+              "label": {
+                "en": "For a day",
+                "fr": "Pendant un jour"
+              }
+            },
+            {
+              "value": "week",
+              "label": {
+                "en": "For a week",
+                "fr": "Pendant une semaine"
+              }
+            },
+            {
+              "value": "never",
+              "label": {
+                "en": "Until someone removes it",
+                "fr": "Jusqu'à ce qu'on l'enlève"
+              }
+            }
+          ],
+          "default": "today",
+          "required": false
+        },
+        {
+          "key": "color",
+          "type": "select",
+          "label": {
+            "en": "Color",
+            "fr": "Couleur"
+          },
+          "options": [
+            {
+              "value": "yellow",
+              "label": {
+                "en": "Yellow",
+                "fr": "Jaune"
+              }
+            },
+            {
+              "value": "pink",
+              "label": {
+                "en": "Pink",
+                "fr": "Rose"
+              }
+            },
+            {
+              "value": "blue",
+              "label": {
+                "en": "Blue",
+                "fr": "Bleu"
+              }
+            },
+            {
+              "value": "green",
+              "label": {
+                "en": "Green",
+                "fr": "Vert"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "en": "Orange",
+                "fr": "Orange"
+              }
+            }
+          ],
+          "default": "yellow",
+          "required": false
+        }
+      ]
     }
   ],
   "widgets": [
@@ -658,6 +845,37 @@
         "fr": "Les repas prévus aujourd'hui et demain."
       },
       "icon": "coffee"
+    },
+    {
+      "key": "rewards",
+      "label": {
+        "en": "OpenFamily: points",
+        "fr": "OpenFamily : points"
+      },
+      "description": {
+        "en": "The reward points of the family, or of one member with their days in a row.",
+        "fr": "Les points de récompense de la famille, ou d'un seul membre avec ses jours de suite."
+      },
+      "icon": "star",
+      "settings": [
+        {
+          "key": "member",
+          "type": "string",
+          "label": {
+            "en": "Family member (first name)",
+            "fr": "Membre de la famille (prénom)"
+          },
+          "description": {
+            "en": "A first name, as written in OpenFamily, to show only that person's points. Empty: the points of everyone who earned some.",
+            "fr": "Un prénom, tel qu'il est écrit dans OpenFamily, pour n'afficher que les points de cette personne. Vide : les points de tous ceux qui en ont gagné."
+          },
+          "placeholder": {
+            "en": "Léa",
+            "fr": "Léa"
+          },
+          "required": false
+        }
+      ]
     }
   ]
 }

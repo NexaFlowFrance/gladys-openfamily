@@ -227,6 +227,26 @@ export class OpenFamilyClient {
     return this.request('GET', '/api/family');
   }
 
+  /**
+   * The reward points of each member: { members: [{ id, name, balance, ... }] }.
+   * Not a route of OpenFamily's documented API: see rewards.js.
+   */
+  rewards() {
+    return this.request('GET', '/api/rewards/summary');
+  }
+
+  /**
+   * Sticks a note on the family's fridge. `expiresAt` is a local date-time
+   * ('YYYY-MM-DDTHH:MM:SS') after which OpenFamily no longer shows it.
+   */
+  addNote({ content, color, expiresAt }) {
+    return this.request('POST', '/api/notes', {
+      content,
+      ...(color ? { color } : {}),
+      ...(expiresAt ? { expires_at: expiresAt } : {}),
+    });
+  }
+
   /** The meals planned from one day to another, both included ('YYYY-MM-DD'). */
   meals(firstDay, lastDay) {
     const query = new URLSearchParams({ start_date: firstDay, end_date: lastDay });

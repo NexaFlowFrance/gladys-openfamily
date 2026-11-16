@@ -31,8 +31,8 @@ C'est l'intégration officielle d'OpenFamily pour Gladys Assistant, développée
 |                                      |                                                                                                                                              |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | 📅 **Calendrier familial**           | Le calendrier d'OpenFamily comme calendrier Gladys, tenu à jour : récurrences et journées entières, un mois d'historique, douze mois à venir |
-| 🧩 **Widgets**                       | Les rendez-vous du jour, la liste de courses, les tâches et les repas, avec des boutons pour ajouter et pour cocher                          |
-| 🎬 **Actions de scène**              | Ajouter à la liste de courses, ajouter une tâche, lire la liste de courses, lire les tâches, lire le menu                                    |
+| 🧩 **Widgets**                       | Les rendez-vous du jour, la liste de courses, les tâches, les repas et les points, avec des boutons pour ajouter et cocher                   |
+| 🎬 **Actions de scène**              | Ajouter aux courses, ajouter une tâche, coller un mot sur le frigo, lire les courses, les tâches, le menu, les points                        |
 | ⚡ **Déclencheurs de scène**         | Article ajouté à la liste, tâche terminée, tâche à faire aujourd'hui                                                                         |
 | 👧 **Une liste par enfant**          | Le widget des tâches peut n'afficher que celles d'un membre de la famille, et les déclencheurs disent à qui une tâche est attribuée          |
 | 🔔 **Rappels**                       | Avec le déclencheur natif de Gladys « un événement du calendrier approche », sur le calendrier OpenFamily partagé                            |

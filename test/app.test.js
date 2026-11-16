@@ -362,10 +362,12 @@ test('fires a trigger for what changed in OpenFamily, never for the first readin
   );
   assert.deepEqual(
     events(gladys, SCENE_TRIGGERS.TASK_COMPLETED).map((event) => event.data),
-    [{ title: 'Trash', assigned_to: '', count: 0 }],
+    [{ title: 'Trash', assigned_to: '', points: 0, count: 0 }],
   );
-  // The open dashboards are told to pull the new content.
+  // The open dashboards are told to pull the new content: the lists, and the
+  // points, which a task done may have changed.
   assert.deepEqual([...new Set(gladys.fake.widgetRefreshes)].sort(), [
+    WIDGETS.REWARDS,
     WIDGETS.SHOPPING,
     WIDGETS.TASKS,
   ]);
@@ -405,7 +407,7 @@ test('fires "task due" once per task on its day', async () => {
   await app.refresh();
   assert.deepEqual(
     events(gladys, SCENE_TRIGGERS.TASK_DUE).map((event) => event.data),
-    [{ title: 'Trash', due: '2026-11-15', assigned_to: '', count: 2 }],
+    [{ title: 'Trash', due: '2026-11-15', assigned_to: '', points: 0, count: 2 }],
   );
 });
 
@@ -430,7 +432,7 @@ test('names who a task is assigned to in the task triggers', async () => {
   await app.refresh();
   assert.deepEqual(
     events(gladys, SCENE_TRIGGERS.TASK_COMPLETED).map((event) => event.data),
-    [{ title: 'Trash', assigned_to: 'Léa, Tom', count: 0 }],
+    [{ title: 'Trash', assigned_to: 'Léa, Tom', points: 0, count: 0 }],
   );
 });
 
@@ -605,6 +607,162 @@ test('shows the meals of today and tomorrow, and reads the menu to a scene', asy
   const content = await widget();
   assert.match(texts(content), /Rien de prévu aujourd'hui/);
   assert.deepEqual(rows(content), [['Pizza', 'Demain · Dîner', 'Tomorrow · Dinner']]);
+});
+
+test('shows the reward points of the family, or the card of one member', async () => {
+  const { server, gladys } = await setup();
+  server.family = [
+    { id: 'm1', name: 'Léa' },
+    { id: 'm2', name: 'Tom' },
+    { id: 'm3', name: 'Alex' },
+    { id: 'm4', name: 'Zoé' },
+  ];
+  await gladys.connect();
+  const card = async (settings = {}) => {
+    const { content } = (await gladys.fake.widgetGet(WIDGETS.REWARDS, { settings })).data;
+    assert.deepEqual(validateWidgetContent(content), []);
+    return content;
+  };
+  const tiles = (content) =>
+    content.components
+      .filter((component) => component.type === 'value')
+      .map((tile) => [tile.label.fr, tile.value]);
+
+  // Nobody earned a point yet.
+  assert.ok(texts(await card()).includes('Aucun point gagné'));
+
+  server.rewards = {
+    points_value: 0.1,
+    members: [
+      { id: 'm1', name: 'Léa', balance: 12, streak: 3, pending_count: 1, has_activity: true },
+      { id: 'm2', name: 'Tom', balance: '20', streak: 0, pending_count: 0, has_activity: true },
+      // A parent who never earned a point has no place on the family's card.
+      { id: 'm3', name: 'Alex', balance: 0, streak: 0, pending_count: 0, has_activity: false },
+    ],
+  };
+  // The family: who plays, most points first.
+  assert.deepEqual(tiles(await card()), [
+    ['Tom', 20],
+    ['Léa', 12],
+  ]);
+  // One member: their points, their days in a row, and what waits for a parent.
+  const lea = await card({ member: 'léa' });
+  assert.ok(texts(lea).includes('Points de Léa'));
+  assert.deepEqual(tiles(lea), [
+    ['Points', 12],
+    ['Jours de suite', 3],
+    ['À valider', 1],
+  ]);
+  assert.deepEqual(tiles(await card({ member: 'Tom' })), [
+    ['Points', 20],
+    ['Jours de suite', 0],
+  ]);
+  // A member the summary does not list has no point yet; an unknown name is said.
+  assert.deepEqual(tiles(await card({ member: 'Zoé' })), [
+    ['Points', 0],
+    ['Jours de suite', 0],
+  ]);
+  assert.ok(texts(await card({ member: 'Nobody' })).includes('Personne dans la famille'));
+
+  // More members than a card holds tiles: rows.
+  server.rewards.members = Array.from({ length: 8 }, (_, n) => ({
+    id: `k${n}`,
+    name: `Kid ${n}`,
+    balance: n + 1,
+    has_activity: true,
+  }));
+  const many = await card();
+  assert.deepEqual(tiles(many), []);
+  assert.ok(texts(many).includes('Kid 7') && texts(many).includes('8 pts'));
+
+  // The route is not part of the documented API: a server without it, or
+  // with another answer, says so and breaks nothing.
+  server.rewards = { something: 'else' };
+  assert.ok(texts(await card()).includes('Aucun point gagné'));
+  server.rewards = null;
+  assert.ok(texts(await card()).includes('ne donne pas les points'));
+  assert.equal(gladys.fake.connectionStatus.connected, true);
+});
+
+test('reads the points to a scene, and gives the points of a task with its triggers', async () => {
+  const { server, gladys, app } = await setup();
+  server.family = [
+    { id: 'm1', name: 'Léa' },
+    { id: 'm2', name: 'Tom' },
+  ];
+  server.rewards = {
+    members: [
+      { id: 'm1', name: 'Léa', balance: 12, streak: 3, has_activity: true },
+      { id: 'm2', name: 'Tom', balance: 20, streak: 1, has_activity: true },
+    ],
+  };
+  server.tasks = [
+    { id: 't1', title: 'Trash', due_date: '2026-11-15', points: 5, is_completed: false },
+    { id: 't2', title: 'Dishes', points: '3', is_completed: false },
+  ];
+  await gladys.connect();
+
+  let ack = await gladys.fake.sceneAction(SCENE_ACTIONS.GET_POINTS, {});
+  assert.deepEqual(ack.data.outputs, { points: 32, streak: 0, summary: 'Tom: 20, Léa: 12' });
+  ack = await gladys.fake.sceneAction(SCENE_ACTIONS.GET_POINTS, { member: 'Léa' });
+  assert.deepEqual(ack.data.outputs, { points: 12, streak: 3, summary: 'Léa: 12' });
+  ack = await gladys.fake.sceneAction(SCENE_ACTIONS.GET_POINTS, { member: 'Nobody' });
+  assert.equal(ack.success, false);
+  server.rewards = null;
+  ack = await gladys.fake.sceneAction(SCENE_ACTIONS.GET_POINTS, {});
+  assert.equal(ack.success, false);
+  assert.match(JSON.stringify(ack), /reward points/);
+
+  // What a task is worth comes with "task due" and "task completed".
+  assert.deepEqual(
+    events(gladys, SCENE_TRIGGERS.TASK_DUE).map((event) => [event.data.title, event.data.points]),
+    [['Trash', 5]],
+  );
+  server.tasks[1].is_completed = true;
+  await app.refresh();
+  assert.deepEqual(
+    events(gladys, SCENE_TRIGGERS.TASK_COMPLETED).map((event) => [
+      event.data.title,
+      event.data.points,
+    ]),
+    [['Dishes', 3]],
+  );
+  // A task done is points earned: the points card pulls again.
+  assert.ok(gladys.fake.widgetRefreshes.includes(WIDGETS.REWARDS));
+});
+
+test('sticks a note on the fridge from a scene, until tonight unless told otherwise', async () => {
+  const { server, gladys } = await setup();
+  await gladys.connect();
+  const stick = (fields) => gladys.fake.sceneAction(SCENE_ACTIONS.ADD_NOTE, fields);
+
+  assert.deepEqual(await stick({ text: ' The washing machine is done ' }), { success: true });
+  await stick({ text: 'Bins out tomorrow', expires: 'day', color: 'blue' });
+  await stick({ text: 'Back on Sunday', expires: 'week', color: 'purple' });
+  await stick({ text: 'Wifi: on the box', expires: 'never' });
+  assert.deepEqual(
+    server.notes.map((note) => [note.content, note.color, note.expires_at]),
+    [
+      ['The washing machine is done', 'yellow', '2026-11-15T23:59:59'],
+      ['Bins out tomorrow', 'blue', '2026-11-16T10:00:00'],
+      // A color OpenFamily does not have is left to its default.
+      ['Back on Sunday', 'yellow', '2026-11-22T10:00:00'],
+      ['Wifi: on the box', 'yellow', null],
+    ],
+  );
+  // OpenFamily takes 500 characters: a longer text is cut, never refused.
+  await stick({ text: 'x'.repeat(600) });
+  assert.equal(server.notes.at(-1).content.length, 500);
+  // An empty note is not one.
+  assert.equal((await stick({ text: '   ' })).success, false);
+  assert.equal(server.notes.length, 5);
+
+  // A read-only token cannot stick anything, and says why.
+  const readOnly = await setup({ scope: 'read' });
+  await readOnly.gladys.connect();
+  const refused = await readOnly.gladys.fake.sceneAction(SCENE_ACTIONS.ADD_NOTE, { text: 'Hi' });
+  assert.equal(refused.success, false);
+  assert.match(JSON.stringify(refused), /read-only/);
 });
 
 test('tells a widget to pull again when the meal plan or the family changes', async (t) => {

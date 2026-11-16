@@ -31,8 +31,8 @@ This is the official OpenFamily integration for Gladys Assistant, built and main
 |                           |                                                                                                                             |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | 📅 **Family calendar**    | The OpenFamily calendar as a Gladys calendar, kept up to date: recurring and full-day events, one month back, twelve ahead  |
-| 🧩 **Dashboard widgets**  | Today's appointments, the shopping list, the tasks and the meals, with buttons to add an entry and to check one off         |
-| 🎬 **Scene actions**      | Add to the shopping list, add a task, read the shopping list, read the tasks, read the menu                                 |
+| 🧩 **Dashboard widgets**  | Today's appointments, the shopping list, the tasks, the meals and the reward points, with buttons to add and to check off   |
+| 🎬 **Scene actions**      | Add to the shopping list, add a task, stick a note on the fridge, read the shopping list, the tasks, the menu, the points   |
 | ⚡ **Scene triggers**     | Item added to the shopping list, task completed, task due today                                                             |
 | 👧 **One list per child** | The tasks widget can show a single family member's tasks, and the task triggers say who a task is assigned to               |
 | 🔔 **Reminders**          | With Gladys' own trigger "an event of the calendar is coming", on the shared OpenFamily calendar                            |
@@ -91,6 +91,7 @@ src/calendar.js     appointments to Gladys events, sync windows
 src/widgets.js      the contents of the widgets
 src/family.js       family members: who a first name stands for, who a task is for
 src/meals.js        the meal plan, in the order of the day
+src/rewards.js      the reward points of the family members
 src/config.js       configuration defaults and normalization
 src/state.js        what is remembered through a restart, kept in /data
 src/i18n.js         every text, in English and French

@@ -30,6 +30,10 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
     family: [],
     /** The planned meals: { date, meal_type, custom_meal?, recipe_name? }. */
     meals: [],
+    /** The rewards summary: { members: [{ id, name, balance, ... }] }; null: no such route. */
+    rewards: { members: [] },
+    /** The notes stuck on the fridge: { id, content, color, expires_at }. */
+    notes: [],
     requests: [],
     nextId: 1,
     /** The family's time zone, as OpenFamily 2.0 gives it; older servers give none. */
@@ -99,6 +103,16 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
       return ok(withMembers(task));
     }
     if (method === 'GET' && path === '/api/family') return ok(server.family);
+    if (method === 'GET' && path === '/api/rewards/summary') {
+      // A server without the route answers like for any unknown one.
+      if (server.rewards === null) return json(404, { success: false, error: 'Route not found' });
+      return ok(server.rewards);
+    }
+    if (method === 'POST' && path === '/api/notes') {
+      const note = { id: `note-${server.nextId++}`, color: 'yellow', expires_at: null, ...body };
+      server.notes.push(note);
+      return ok(note);
+    }
     if (method === 'GET' && path === '/api/meal-plans') {
       const from = url.searchParams.get('start_date') ?? '';
       const to = url.searchParams.get('end_date') ?? '9999';

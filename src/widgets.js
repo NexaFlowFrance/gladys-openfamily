@@ -23,6 +23,10 @@ export const NO_DUE = 'none';
 
 // A status list shows ten rows at most; the last one counts the rest.
 const ROWS = 8;
+// A card holds six tiles at most.
+const TILES = 6;
+// The unit of the reward points, the same in both languages.
+const POINTS = 'pts';
 const DAY_FORMAT = { weekday: 'short', day: 'numeric', month: 'short' };
 
 const cut = (value, max) => {
@@ -207,6 +211,53 @@ export function shoppingWidget(items, { readOnly = false } = {}) {
     });
   }
   return { ttl_seconds: 120, components };
+}
+
+/**
+ * The reward points. `members` are the ones to show, most points first (see
+ * scoreboard): a tile each, or rows when they are more than a card holds
+ * tiles. With a `member`, the card is that person's alone: their points, the
+ * days in a row with a task done, and the tasks a parent has yet to approve.
+ */
+export function rewardsWidget(members, { member = null } = {}) {
+  const tile = (value, label, icon, color) => ({ type: 'value', value, label, icon, color });
+  if (member) {
+    return {
+      ttl_seconds: 120,
+      components: [
+        { type: 'text', text: T.widget.pointsOf(cut(member.name, 24)), variant: 'heading' },
+        { ...tile(member.points, T.widget.points, 'star', WIDGET_COLORS.PRIMARY), unit: POINTS },
+        tile(
+          member.streak,
+          T.widget.streak,
+          'zap',
+          member.streak > 0 ? WIDGET_COLORS.SUCCESS : WIDGET_COLORS.NEUTRAL,
+        ),
+        ...(member.pending > 0
+          ? [tile(member.pending, T.widget.toApprove, 'clock', WIDGET_COLORS.WARNING)]
+          : []),
+      ],
+    };
+  }
+  if (members.length === 0) {
+    return messageWidget(T.widget.points, T.widget.noPoints, 300);
+  }
+  const heading = { type: 'text', text: T.widget.points, variant: 'heading' };
+  const content =
+    members.length > TILES
+      ? [
+          rows(members, (entry) => ({
+            label: cut(entry.name, 40),
+            value: `${entry.points} ${POINTS}`,
+            icon: 'star',
+            color: WIDGET_COLORS.PRIMARY,
+          })),
+        ]
+      : members.map((entry) => ({
+          ...tile(entry.points, same(cut(entry.name, 24)), 'star', WIDGET_COLORS.PRIMARY),
+          unit: POINTS,
+        }));
+  return { ttl_seconds: 120, components: [heading, ...content] };
 }
 
 /**
