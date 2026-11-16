@@ -22,22 +22,22 @@ off an item or a task, from a widget or a scene.
 ## Requirements
 
 - Gladys Assistant 5.2.0 or later.
-- An OpenFamily server that Gladys can reach on your network, in a version that offers **API
-  tokens** (Settings → API tokens).
+- An OpenFamily server in version **2.0 or later**, that Gladys can reach on your network. **API
+  tokens** (Settings, then API tokens) came with version 2.0.
 - An API token created by a parent account. Choose **Read and write** to add and check off from
   Gladys; a **read-only** token is enough to display.
-- For the right times: OpenFamily stores the family's local times. With OpenFamily 2.0 or later,
-  the integration reads the family's time zone from OpenFamily itself. With an older server, it
-  uses the time zone set in the Gladys settings.
+- For the right times: OpenFamily stores the family's local times, and the integration reads the
+  family's time zone from OpenFamily itself.
 
 ## Configuration
 
 1. In OpenFamily, open **Settings → API tokens**, give it a name ("Gladys"), choose the scope and
    create the token. Copy it right away: it is shown only once.
 2. In Gladys, open the integration page and fill in:
-   - **OpenFamily address**: the one you open in the browser, for example
-     `http://192.168.1.20:3000`. From Gladys, `localhost` means the integration's own container:
-     use the IP address or the name of the machine.
+   - **OpenFamily address**: the address of the server on your network, for example
+     `http://192.168.1.20:3000`, with nothing after the port. Gladys is the one that has to reach
+     it, not your browser: `localhost` means the integration's own container, and a Tailscale
+     address or a `.local` name is often known to your own devices only.
    - **API token**: the token you copied, starting with `ofk_`.
 3. Click **Test the connection**: the message names the account the token stands for.
 4. For the calendar, enable the integration in the **My calendars** block. The "OpenFamily"
@@ -53,29 +53,54 @@ Optional settings:
   arrive within seconds, through OpenFamily's real-time channel.
 - **Category of added items**: the OpenFamily category given to the items added from Gladys
   ("Autre" by default).
-- **Time zone of the family**: only to fill in when the times show shifted with an OpenFamily
-  older than 2.0 (see the troubleshooting).
+- **Hour of the "Task due today" trigger**: the hour from which a task due today fires the
+  trigger, 7 by default, in the family's time. A scene that announces the day's tasks does not
+  speak at midnight. The trigger fires once per task on that day, even when Gladys or the
+  integration restarts in between.
+- **Time zone of the family**: usually left empty, since the integration reads the family's time
+  zone from OpenFamily. Fill it in only to read the times in another zone.
 
 Reminders go through Gladys' native trigger **"An event of the calendar is coming"**, with the
 shared OpenFamily calendar: you choose the delay and filter on the name.
 
 ## Troubleshooting
 
-- **"The OpenFamily server cannot be reached"**: check the address, with nothing after the port,
-  and that it answers from the machine running Gladys. `localhost` does not work (see above).
+The message shown on the integration page says what is wrong:
+
+- **"Seen from Gladys, localhost is the integration itself"**: replace `localhost` with the IP
+  address of the machine running OpenFamily on your network.
+- **"Gladys cannot find the OpenFamily server under this name"**: Gladys does not know this name,
+  as often with a Tailscale name or a `.local` name. Use the IP address of the server on your
+  network.
+- **"The OpenFamily server does not answer"**: the machine running Gladys cannot reach this
+  address. That is the case of a Tailscale address (`100.x.x.x`) when Gladys is not part of that
+  Tailscale network, or of a firewall between the two machines.
+- **"The OpenFamily server refuses the connection"**: the port in the address is not the right
+  one, or OpenFamily is stopped.
+- **"This address starts with https:// but the server answers in plain HTTP"**: write the address
+  with `http://`.
+- **"Gladys does not trust the HTTPS certificate"**: the certificate is self-signed or comes from
+  a private authority. Use the `http://` address of the server on your network.
+- **"The OpenFamily server cannot be reached"**: another network failure. Check the address, with
+  nothing after the port, and that it answers from the machine running Gladys.
+- **"This OpenFamily server is too old for API tokens"**: update OpenFamily to version 2.0 or
+  later.
 - **"OpenFamily refused the API token"**: the token was revoked, or the account that created it
   left the family. Create a new one and paste it in the configuration.
 - **"This API token is read-only"**: displaying works, but adding and checking off need a **Read
   and write** token.
 - **"OpenFamily answered with an error"**: the address is probably not the one of an OpenFamily
-  server, or its version is too old for API tokens.
+  server.
+
+Other cases:
+
 - **Events show twice**: two users enabled the calendar. Disable it for one of them and share the
   remaining one with the household.
-- **Times are shifted**: with OpenFamily 2.0 or later, check the family's time zone in
-  OpenFamily, under **Settings**, then **Time zone**. With an older server, the time zone is not
-  set in the Gladys settings (the integration then runs in UTC), or it differs from the
-  family's: set it in Gladys, or fill in **Time zone of the family** in the integration's
-  configuration, for example `Europe/Paris`.
+- **Times are shifted**: check the family's time zone in OpenFamily, under **Settings**, then
+  **Time zone**. If **Time zone of the family** is filled in the integration's configuration, it
+  is the one used: empty it.
+- **A scene bound to "Task due today" does not start in the morning**: the trigger waits for the
+  hour set in the integration's configuration, 7 by default.
 - **A button answers that it needs a more recent Gladys**: widget forms exist since Gladys 5.2.
 - **The calendar does not update**: use **Sync now** on the integration page, and check that the
   calendar is not switched off in "My calendars".

@@ -8,15 +8,26 @@
 const FIRST_RETRY_MS = 5000;
 const MAX_RETRY_MS = 5 * 60 * 1000;
 
+/** The close code of a channel whose token OpenFamily refuses, or has just revoked. */
+export const CLOSE_REFUSED = 4001;
+
 /**
  * @param {object} options
  * @param {string} options.url the server address (http or https)
  * @param {string} options.token the API token
  * @param {(entity: string) => void} options.onUpdate
+ * @param {() => void} [options.onRefused] the token was refused: the channel
+ *   has stopped for good, trying again would only be refused again
  * @param {typeof WebSocket} [options.WebSocketImpl]
  * @returns {() => void} stops the channel
  */
-export function connectLive({ url, token, onUpdate, WebSocketImpl = globalThis.WebSocket }) {
+export function connectLive({
+  url,
+  token,
+  onUpdate,
+  onRefused,
+  WebSocketImpl = globalThis.WebSocket,
+}) {
   if (typeof WebSocketImpl !== 'function') {
     return () => {};
   }
@@ -32,6 +43,24 @@ export function connectLive({ url, token, onUpdate, WebSocketImpl = globalThis.W
     delay = Math.min(delay * 2, MAX_RETRY_MS);
   };
 
+  const stop = () => {
+    stopped = true;
+    clearTimeout(timer);
+    try {
+      socket?.close();
+    } catch {
+      // Already closed.
+    }
+  };
+
+  // OpenFamily answers a token it refuses, then closes with CLOSE_REFUSED; a
+  // token revoked later only gets the close. Either way, once.
+  const refused = () => {
+    if (stopped) return;
+    stop();
+    onRefused?.();
+  };
+
   function open() {
     if (stopped) return;
     try {
@@ -44,8 +73,9 @@ export function connectLive({ url, token, onUpdate, WebSocketImpl = globalThis.W
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(String(event.data));
-        if (message.type === 'auth' && message.success) {
-          delay = FIRST_RETRY_MS;
+        if (message.type === 'auth') {
+          if (message.success) delay = FIRST_RETRY_MS;
+          else refused();
         } else if (message.type === 'update' && typeof message.entity === 'string') {
           onUpdate(message.entity);
         }
@@ -54,17 +84,9 @@ export function connectLive({ url, token, onUpdate, WebSocketImpl = globalThis.W
       }
     };
     socket.onerror = () => {};
-    socket.onclose = retry;
+    socket.onclose = (event) => (event?.code === CLOSE_REFUSED ? refused() : retry());
   }
 
   open();
-  return () => {
-    stopped = true;
-    clearTimeout(timer);
-    try {
-      socket?.close();
-    } catch {
-      // Already closed.
-    }
-  };
+  return stop;
 }

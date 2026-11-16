@@ -21,8 +21,8 @@
         "fr": "Connecter votre serveur OpenFamily"
       },
       "description": {
-        "en": "OpenFamily is a free, self-hosted family organizer. In OpenFamily, open Settings, then API tokens, and create a \"Read and write\" token for Gladys. Paste it below with the address of your server, as Gladys reaches it on your network.",
-        "fr": "OpenFamily est un organisateur familial libre et auto-hébergé. Dans OpenFamily, ouvrez Paramètres, puis Jetons d'API, et créez un jeton « Lecture et écriture » pour Gladys. Collez-le ci-dessous avec l'adresse de votre serveur, telle que Gladys l'atteint sur votre réseau."
+        "en": "OpenFamily is a free, self-hosted family organizer. In OpenFamily (2.0 or later), open Settings, then API tokens, and create a \"Read and write\" token for Gladys. Paste it below with the address of your server, as Gladys reaches it on your network.",
+        "fr": "OpenFamily est un organisateur familial libre et auto-hébergé. Dans OpenFamily (2.0 ou plus récent), ouvrez Paramètres, puis Jetons d'API, et créez un jeton « Lecture et écriture » pour Gladys. Collez-le ci-dessous avec l'adresse de votre serveur, telle que Gladys l'atteint sur votre réseau."
       },
       "links": [
         {
@@ -42,8 +42,8 @@
         "fr": "Adresse d'OpenFamily"
       },
       "description": {
-        "en": "The address you open OpenFamily at, without anything after the port.",
-        "fr": "L'adresse à laquelle vous ouvrez OpenFamily, sans rien après le port."
+        "en": "The address of the OpenFamily server on your network, as Gladys reaches it, without anything after the port. Not localhost, nor an address only your own devices know (Tailscale).",
+        "fr": "L'adresse du serveur OpenFamily sur votre réseau, telle que Gladys l'atteint, sans rien après le port. Ni localhost, ni une adresse connue de vos seuls appareils (Tailscale)."
       },
       "placeholder": {
         "en": "http://192.168.1.20:3000",
@@ -95,6 +95,22 @@
       "default": "Autre"
     },
     {
+      "key": "due_hour",
+      "type": "number",
+      "label": {
+        "en": "Hour of the \"Task due today\" trigger",
+        "fr": "Heure du déclencheur « Tâche à faire aujourd'hui »"
+      },
+      "description": {
+        "en": "The hour (0 to 23, in the family's time) from which a task due today fires the scene trigger, so that a scene does not speak at midnight. 0: as soon as the day starts.",
+        "fr": "L'heure (0 à 23, à l'heure de la famille) à partir de laquelle une tâche à faire aujourd'hui lance le déclencheur de scène, pour qu'une scène ne parle pas à minuit. 0 : dès le début de la journée."
+      },
+      "required": false,
+      "default": 7,
+      "min": 0,
+      "max": 23
+    },
+    {
       "key": "timezone",
       "type": "string",
       "label": {
@@ -102,8 +118,8 @@
         "fr": "Fuseau horaire de la famille"
       },
       "description": {
-        "en": "Only with an OpenFamily older than 2.0, when the times are shifted in Gladys: the time zone OpenFamily is used in. Empty: the family's own, as OpenFamily 2.0 gives it, or else the one set in the Gladys settings.",
-        "fr": "Seulement avec un OpenFamily antérieur à la 2.0, si les heures sont décalées dans Gladys : le fuseau dans lequel OpenFamily est utilisé. Vide : celui de la famille, donné par OpenFamily 2.0, sinon celui réglé dans les paramètres de Gladys."
+        "en": "Usually left empty: the integration reads the family's time zone from OpenFamily. Fill it in only to read the times in another zone.",
+        "fr": "À laisser vide en général : l'intégration lit le fuseau de la famille dans OpenFamily. À renseigner seulement pour lire les heures dans un autre fuseau."
       },
       "placeholder": {
         "en": "Europe/Paris",
@@ -218,8 +234,8 @@
         "fr": "Tâche à faire aujourd'hui"
       },
       "description": {
-        "en": "A task of OpenFamily reaches its due date, once per task on that day.",
-        "fr": "Une tâche d'OpenFamily arrive à échéance, une fois par tâche ce jour-là."
+        "en": "A task of OpenFamily is due today: once per task, from the hour set in the integration (7 by default).",
+        "fr": "Une tâche d'OpenFamily est à faire aujourd'hui : une fois par tâche, à partir de l'heure réglée dans l'intégration (7 h par défaut)."
       },
       "variables": [
         {

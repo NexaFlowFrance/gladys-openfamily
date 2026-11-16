@@ -44,8 +44,8 @@ OpenFamily de la vie de famille qui s'y déroule.
 
 ## 🚀 Installation en trois étapes
 
-1. **Dans OpenFamily**, ouvrez **Paramètres**, puis **Jetons d'API**, créez un jeton **Lecture
-   et écriture** et copiez-le. Il n'est affiché qu'une fois.
+1. **Dans OpenFamily** (2.0 ou plus récent), ouvrez **Paramètres**, puis **Jetons d'API**, créez
+   un jeton **Lecture et écriture** et copiez-le. Il n'est affiché qu'une fois.
 2. **Dans Gladys** (5.2.0 ou plus récent), ouvrez **Intégrations**, cherchez **OpenFamily** dans
    le catalogue et installez-la.
 3. **Configurez-la** : l'adresse de votre serveur OpenFamily, le jeton, puis **Tester la
