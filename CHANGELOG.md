@@ -10,6 +10,11 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- The cover image shown in the Gladys catalog now carries OpenFamily's own
+  logo and colors, in place of a generic illustration.
+
 ## [0.2.0] - 2026-11-15
 
 ### Changed
