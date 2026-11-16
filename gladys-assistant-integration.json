@@ -218,6 +218,14 @@
           }
         },
         {
+          "key": "assigned_to",
+          "type": "string",
+          "label": {
+            "en": "Assigned to",
+            "fr": "Attribuée à"
+          }
+        },
+        {
           "key": "count",
           "type": "number",
           "label": {
@@ -252,6 +260,14 @@
           "label": {
             "en": "Due date",
             "fr": "Échéance"
+          }
+        },
+        {
+          "key": "assigned_to",
+          "type": "string",
+          "label": {
+            "en": "Assigned to",
+            "fr": "Attribuée à"
           }
         },
         {
@@ -357,6 +373,23 @@
             "fr": "Échéance (AAAA-MM-JJ)"
           },
           "required": false
+        },
+        {
+          "key": "member",
+          "type": "string",
+          "label": {
+            "en": "For (first name)",
+            "fr": "Pour (prénom)"
+          },
+          "description": {
+            "en": "The first name of a family member, as written in OpenFamily, to assign the task to. Empty: nobody in particular.",
+            "fr": "Le prénom d'un membre de la famille, tel qu'il est écrit dans OpenFamily, à qui attribuer la tâche. Vide : personne en particulier."
+          },
+          "placeholder": {
+            "en": "Léa",
+            "fr": "Léa"
+          },
+          "required": false
         }
       ],
       "outputs": [
@@ -419,6 +452,25 @@
         "fr": "Donne les tâches restantes aux actions suivantes de la scène."
       },
       "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "member",
+          "type": "string",
+          "label": {
+            "en": "Of (first name)",
+            "fr": "De (prénom)"
+          },
+          "description": {
+            "en": "The first name of a family member, as written in OpenFamily, to read only that person's tasks. Empty: everyone's.",
+            "fr": "Le prénom d'un membre de la famille, tel qu'il est écrit dans OpenFamily, pour ne lire que ses tâches. Vide : celles de tout le monde."
+          },
+          "placeholder": {
+            "en": "Léa",
+            "fr": "Léa"
+          },
+          "required": false
+        }
+      ],
       "outputs": [
         {
           "key": "count",
@@ -442,6 +494,96 @@
           "label": {
             "en": "The tasks",
             "fr": "Les tâches"
+          }
+        }
+      ]
+    },
+    {
+      "key": "get_meals",
+      "label": {
+        "en": "Read the menu",
+        "fr": "Lire le menu"
+      },
+      "description": {
+        "en": "Gives the meals planned in OpenFamily, today or tomorrow, to the next actions of the scene.",
+        "fr": "Donne les repas prévus dans OpenFamily, aujourd'hui ou demain, aux actions suivantes de la scène."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "day",
+          "type": "select",
+          "label": {
+            "en": "Day",
+            "fr": "Jour"
+          },
+          "options": [
+            {
+              "value": "today",
+              "label": {
+                "en": "Today",
+                "fr": "Aujourd'hui"
+              }
+            },
+            {
+              "value": "tomorrow",
+              "label": {
+                "en": "Tomorrow",
+                "fr": "Demain"
+              }
+            }
+          ],
+          "default": "today",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "count",
+          "type": "number",
+          "label": {
+            "en": "Meals planned",
+            "fr": "Repas prévus"
+          }
+        },
+        {
+          "key": "menu",
+          "type": "string",
+          "label": {
+            "en": "The whole menu",
+            "fr": "Tout le menu"
+          }
+        },
+        {
+          "key": "breakfast",
+          "type": "string",
+          "label": {
+            "en": "Breakfast",
+            "fr": "Petit-déjeuner"
+          }
+        },
+        {
+          "key": "lunch",
+          "type": "string",
+          "label": {
+            "en": "Lunch",
+            "fr": "Déjeuner"
+          }
+        },
+        {
+          "key": "dinner",
+          "type": "string",
+          "label": {
+            "en": "Dinner",
+            "fr": "Dîner"
+          }
+        },
+        {
+          "key": "snack",
+          "type": "string",
+          "label": {
+            "en": "Snack",
+            "fr": "Snack"
           }
         }
       ]
@@ -480,11 +622,42 @@
         "fr": "OpenFamily : tâches"
       },
       "description": {
-        "en": "The tasks left to do, with buttons to add one and mark one as done.",
-        "fr": "Les tâches à faire, avec des boutons pour en ajouter et en terminer."
+        "en": "The tasks of the family or of one member, with buttons to add one and mark one as done.",
+        "fr": "Les tâches de la famille ou d'un seul membre, avec des boutons pour ajouter et terminer."
       },
       "icon": "check-square",
+      "settings": [
+        {
+          "key": "member",
+          "type": "string",
+          "label": {
+            "en": "Family member (first name)",
+            "fr": "Membre de la famille (prénom)"
+          },
+          "description": {
+            "en": "A first name, as written in OpenFamily, to show only that person's tasks. Empty: the tasks of the whole family.",
+            "fr": "Un prénom, tel qu'il est écrit dans OpenFamily, pour n'afficher que les tâches de cette personne. Vide : les tâches de toute la famille."
+          },
+          "placeholder": {
+            "en": "Léa",
+            "fr": "Léa"
+          },
+          "required": false
+        }
+      ],
       "action_timeout_seconds": 30
+    },
+    {
+      "key": "meals",
+      "label": {
+        "en": "OpenFamily: meals",
+        "fr": "OpenFamily : repas"
+      },
+      "description": {
+        "en": "The meals planned today and tomorrow.",
+        "fr": "Les repas prévus aujourd'hui et demain."
+      },
+      "icon": "coffee"
     }
   ]
 }

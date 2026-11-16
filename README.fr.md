@@ -31,9 +31,10 @@ C'est l'intégration officielle d'OpenFamily pour Gladys Assistant, développée
 |                                      |                                                                                                                                              |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | 📅 **Calendrier familial**           | Le calendrier d'OpenFamily comme calendrier Gladys, tenu à jour : récurrences et journées entières, un mois d'historique, douze mois à venir |
-| 🧩 **Widgets**                       | Les rendez-vous du jour, la liste de courses et les tâches, avec des boutons pour ajouter et pour cocher                                     |
-| 🎬 **Actions de scène**              | Ajouter à la liste de courses, ajouter une tâche, lire la liste de courses, lire les tâches                                                  |
+| 🧩 **Widgets**                       | Les rendez-vous du jour, la liste de courses, les tâches et les repas, avec des boutons pour ajouter et pour cocher                          |
+| 🎬 **Actions de scène**              | Ajouter à la liste de courses, ajouter une tâche, lire la liste de courses, lire les tâches, lire le menu                                    |
 | ⚡ **Déclencheurs de scène**         | Article ajouté à la liste, tâche terminée, tâche à faire aujourd'hui                                                                         |
+| 👧 **Une liste par enfant**          | Le widget des tâches peut n'afficher que celles d'un membre de la famille, et les déclencheurs disent à qui une tâche est attribuée          |
 | 🔔 **Rappels**                       | Avec le déclencheur natif de Gladys « un événement du calendrier approche », sur le calendrier OpenFamily partagé                            |
 | 🔄 **Temps réel**                    | Un changement fait dans OpenFamily arrive dans Gladys en quelques secondes                                                                   |
 | 🔐 **Vos données restent chez vous** | L'intégration ne parle qu'à votre Gladys et à votre serveur OpenFamily. Gladys ne modifie jamais votre calendrier                            |
@@ -42,6 +43,8 @@ C'est l'intégration officielle d'OpenFamily pour Gladys Assistant, développée
 
 - 🌅 Au réveil de la famille, lire les tâches du jour et les annoncer sur une enceinte.
 - 🧈 Un bouton sur le frigo qui ajoute du beurre à la liste de courses.
+- 🍽️ À dix-huit heures, annoncer le dîner du soir sur l'enceinte de la cuisine.
+- 🧒 Sur la tablette de la chambre de chaque enfant, sa propre liste de tâches.
 - 🛒 Un message à la personne qui fait les courses quand un article est ajouté à la liste.
 - 🦷 La lumière de l'entrée s'allume un quart d'heure avant le rendez-vous chez le dentiste.
 - ✅ Un mot de félicitations quand quelqu'un termine une tâche.

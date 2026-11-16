@@ -12,6 +12,17 @@ the notes of the version's GitHub Release.
 
 ### Added
 
+- A meals widget: the meals planned today and tomorrow in the meal planner of
+  OpenFamily.
+- A "Read the menu" scene action: the menu of today or tomorrow for the next
+  actions of the scene, as a whole or meal by meal, to announce dinner on a
+  speaker for instance.
+- The tasks widget can be the one of a single family member: type a first
+  name in its settings, and add the widget once per child. A task added from
+  that widget is assigned to them.
+- The "Task completed" and "Task due today" triggers give who the task is
+  assigned to. The "Read the tasks" and "Add a task" scene actions take a
+  first name, to read one member's tasks or to assign one.
 - A setting for the hour of the "Task due today" trigger, 7 by default, in the
   family's time. The trigger used to fire at the first reading after midnight:
   a scene announcing the day's tasks on a speaker would have spoken at night.
@@ -33,6 +44,7 @@ the notes of the version's GitHub Release.
 
 ### Changed
 
+- The tasks widget of the whole family shows who each task is assigned to.
 - The real-time channel only triggers a reading for what the integration
   shows. A change to the budget or the recipes no longer reads the shopping
   list and the tasks again.

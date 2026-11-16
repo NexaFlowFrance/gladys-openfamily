@@ -26,6 +26,10 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
     shopping: [],
     tasks: [],
     appointments: [],
+    /** The members of the family: { id, name }. */
+    family: [],
+    /** The planned meals: { date, meal_type, custom_meal?, recipe_name? }. */
+    meals: [],
     requests: [],
     nextId: 1,
     /** The family's time zone, as OpenFamily 2.0 gives it; older servers give none. */
@@ -76,11 +80,40 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
       server.shopping.push(item);
       return ok(item);
     }
-    if (method === 'GET' && path === '/api/tasks') return ok(server.tasks);
+    // A task comes with the members it is assigned to, as the server sends them.
+    const withMembers = (task) => {
+      const assignedTo = Array.isArray(task.assigned_to) ? task.assigned_to : [];
+      return {
+        ...task,
+        assigned_to: assignedTo,
+        assigned_to_members: assignedTo
+          .map((id) => server.family.find((member) => member.id === id))
+          .filter(Boolean)
+          .map(({ id, name }) => ({ id, name, color: '#FF4466' })),
+      };
+    };
+    if (method === 'GET' && path === '/api/tasks') return ok(server.tasks.map(withMembers));
     if (method === 'POST' && path === '/api/tasks') {
       const task = { id: `task-${server.nextId++}`, is_completed: false, due_date: null, ...body };
       server.tasks.push(task);
-      return ok(task);
+      return ok(withMembers(task));
+    }
+    if (method === 'GET' && path === '/api/family') return ok(server.family);
+    if (method === 'GET' && path === '/api/meal-plans') {
+      const from = url.searchParams.get('start_date') ?? '';
+      const to = url.searchParams.get('end_date') ?? '9999';
+      return ok(
+        server.meals
+          .filter((meal) => meal.date >= from && meal.date <= to)
+          // As the server orders them: by date, then by the name of the meal type.
+          .sort((a, b) => `${a.date} ${a.meal_type}`.localeCompare(`${b.date} ${b.meal_type}`))
+          .map(({ recipe_name: name, ...meal }) => ({
+            id: `meal-${meal.date}-${meal.meal_type}`,
+            custom_meal: null,
+            ...meal,
+            recipe: name ? { id: 'r1', name, category: null, image_url: null } : null,
+          })),
+      );
     }
     const put = path.match(/^\/api\/(shopping|tasks)\/([^/]+)$/);
     if (method === 'PUT' && put) {

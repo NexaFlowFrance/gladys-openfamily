@@ -20,7 +20,8 @@ export const naive = (date) =>
 
 export const localDay = (date) => naive(date).slice(0, 10);
 
-const addDays = (day, days) => {
+/** The day ('YYYY-MM-DD') that comes `days` days after `day`. */
+export const addDays = (day, days) => {
   const [y, m, d] = day.split('-').map(Number);
   return localDay(new Date(y, m - 1, d + days));
 };
