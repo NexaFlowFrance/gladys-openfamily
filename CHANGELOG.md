@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
 ### Added
 
 - A points widget: the reward points of the family members who earned some,
@@ -122,7 +124,8 @@ the notes of the version's GitHub Release.
 - Changes arrive within seconds through OpenFamily's real-time channel, with a
   periodic reading as the safety net.
 
-[Unreleased]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/NexaFlowFrance/gladys-openfamily/compare/v0.1.0...v0.1.1

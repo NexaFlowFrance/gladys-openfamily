@@ -6,8 +6,8 @@
     "en": "Your OpenFamily family calendar, shopping list and tasks in Gladys: dashboard and scenes.",
     "fr": "Le calendrier familial, la liste de courses et les tâches d'OpenFamily dans Gladys."
   },
-  "version": "0.3.0",
-  "docker_image": "ghcr.io/nexaflowfrance/gladys-openfamily:0.3.0",
+  "version": "0.4.0",
+  "docker_image": "ghcr.io/nexaflowfrance/gladys-openfamily:0.4.0",
   "gladys_version": ">=5.2.0",
   "cover_image": "https://raw.githubusercontent.com/NexaFlowFrance/gladys-openfamily/main/cover.png",
   "categories": ["services"],
