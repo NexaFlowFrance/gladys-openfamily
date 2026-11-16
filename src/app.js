@@ -42,7 +42,11 @@ export const SCENE_TRIGGERS = {
   TASK_DUE: 'task_due',
 };
 
-const CALENDAR_COLOR = '#16a34a';
+// OpenFamily's own color, the one of its buttons.
+const CALENDAR_COLOR = '#dc4a60';
+// On a day without an appointment, the "today" widget shows the next ones.
+const UPCOMING_DAYS = 30;
+const UPCOMING_ROWS = 3;
 // What the real-time channel can announce that this integration shows.
 const LIVE_LISTS = new Set(['shopping', 'tasks']);
 const LIVE_APPOINTMENTS = 'appointments';
@@ -137,6 +141,9 @@ export class OpenFamilyApp {
     this.ownItems = new Set();
     this.calendarHashes = new Map();
     this.signatures = {};
+    // Learnt the day OpenFamily refuses a write for it: the API does not say
+    // beforehand what a token may do.
+    this.readOnly = false;
   }
 
   /** Runs `fn` after whatever is in progress: one reading at a time. */
@@ -157,7 +164,7 @@ export class OpenFamilyApp {
       await this.status(new OpenFamilyError(ERRORS.NOT_CONFIGURED));
       return;
     }
-    await this.adoptTimeZone();
+    this.zoneKnown = await this.adoptTimeZone();
     await this.tick();
     if (this.timers) {
       this.pollTimer = setInterval(() => void this.poll(), this.config.pollMinutes * 60 * 1000);
@@ -167,8 +174,16 @@ export class OpenFamilyApp {
     this.openLive();
   }
 
-  /** The periodic reading. A good one also reopens a real-time channel that was refused. */
+  /**
+   * The periodic reading. A good one also reopens a real-time channel that was
+   * refused. And when OpenFamily could not be asked for the family's time zone
+   * at start, it is asked again first: until then every time is read in the
+   * zone of Gladys, an hour or two off for a Gladys left in UTC.
+   */
   async poll() {
+    if (!this.zoneKnown) {
+      this.zoneKnown = await this.adoptTimeZone();
+    }
     if ((await this.tick()) && this.liveRefused) {
       this.openLive();
     }
@@ -217,19 +232,23 @@ export class OpenFamilyApp {
    * family's own, which OpenFamily 2.0 and later give with the account; and
    * otherwise the one Gladys started this container in, which is UTC when the
    * time zone was never set in the Gladys settings.
+   *
+   * Resolves to false when OpenFamily could not be asked: to be asked again.
    */
   async adoptTimeZone() {
     if (this.config.timeZone) {
       process.env.TZ = this.config.timeZone;
-      return;
+      return true;
     }
     try {
       const zone = normalizeTimeZone((await this.client.me())?.timezone);
       if (zone) {
         process.env.TZ = zone;
       }
+      return true;
     } catch {
       // The reading that follows says what is wrong with the connection.
+      return false;
     }
   }
 
@@ -537,22 +556,32 @@ export class OpenFamilyApp {
       [WIDGETS.TASKS]: T.widget.tasks,
       [WIDGETS.MEALS]: T.widget.meals,
     };
+    const { readOnly } = this;
+    const today = localDay(this.now());
     try {
       if (key === WIDGETS.SHOPPING) {
-        return shoppingWidget(pendingItems(await this.client.shopping()));
+        return shoppingWidget(pendingItems(await this.client.shopping()), { readOnly });
       }
       if (key === WIDGETS.TASKS) {
         const [tasks, member] = await Promise.all([
           this.client.tasks(),
           this.member(settings?.member),
         ]);
-        const pending = pendingTasks(tasks, localDay(this.now()));
-        return member ? tasksWidget(tasksOf(pending, member), member) : tasksWidget(pending);
+        const pending = pendingTasks(tasks, today);
+        return tasksWidget(member ? tasksOf(pending, member) : pending, {
+          member,
+          today,
+          readOnly,
+        });
       }
       if (key === WIDGETS.MEALS) {
         return mealsWidget(await this.meals());
       }
-      return todayWidget(await this.todayEvents());
+      const events = await this.todayEvents();
+      return todayWidget(events, {
+        today,
+        upcoming: events.length === 0 ? await this.upcomingEvents() : [],
+      });
     } catch (err) {
       return messageWidget(headings[key], err.text ?? errorText(err), 60);
     }
@@ -596,6 +625,45 @@ export class OpenFamilyApp {
   }
 
   /**
+   * The next appointments after today, soonest first: what the "today" widget
+   * shows on a day without one. One still running from an earlier day is
+   * today's, not a coming one.
+   */
+  async upcomingEvents() {
+    const now = this.now();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1 + UPCOMING_DAYS);
+    const first = localDay(start);
+    const appointments = await this.client.appointments(naive(start), naive(end));
+    return appointments
+      .filter(
+        (a) =>
+          typeof a.title === 'string' &&
+          a.title.trim() &&
+          typeof a.start_time === 'string' &&
+          a.start_time.slice(0, 10) >= first,
+      )
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+      .slice(0, UPCOMING_ROWS)
+      .map((a) => ({
+        name: a.title,
+        day: a.start_time.slice(0, 10),
+        time: a.is_all_day ? null : a.start_time.slice(11, 16),
+      }));
+  }
+
+  /**
+   * OpenFamily refused a write because the API token is read-only: from now on
+   * the widgets only show, without a button that could only fail.
+   */
+  learnReadOnly(err) {
+    if (err?.code !== ERRORS.READ_ONLY || this.readOnly) return;
+    this.readOnly = true;
+    this.nudge(WIDGETS.SHOPPING);
+    this.nudge(WIDGETS.TASKS);
+  }
+
+  /**
    * A button of a widget was tapped; `values` is the form the user filled,
    * `settings` the ones of the widget it was tapped on.
    */
@@ -620,10 +688,13 @@ export class OpenFamilyApp {
           return T.widget.itemChecked(bounded(item?.name ?? '', 60));
         }
         case WIDGET_ACTIONS.ADD_TASK: {
-          const due = String(values.due_date ?? '').trim();
-          if (due && !DATE.test(due)) {
+          // A date typed by hand wins over the one picked in the list.
+          const typed = String(values.due_date ?? '').trim();
+          if (typed && !DATE.test(typed)) {
             return T.widget.badDate;
           }
+          const picked = String(values.due ?? '');
+          const due = typed || (DATE.test(picked) ? picked : '');
           const title = bounded(String(values.title ?? '').trim());
           // Added from a member's own widget, a task is theirs.
           const member = await this.member(settings?.member);
@@ -647,6 +718,7 @@ export class OpenFamilyApp {
       }
     } catch (err) {
       if (err.text) return err.text;
+      this.learnReadOnly(err);
       // An entry that left the list since the form was drawn.
       return err.code === ERRORS.SERVER ? T.widget.gone : errorText(err);
     }
@@ -735,6 +807,7 @@ export class OpenFamilyApp {
       }
     } catch (err) {
       if (err instanceof OpenFamilyError) {
+        this.learnReadOnly(err);
         throw new Error(errorText(err).en, { cause: err });
       }
       throw err;

@@ -8,6 +8,7 @@
 // -----------------------------------------------------------------------------
 
 import { WIDGET_COLORS } from '@gladysassistant/integration-sdk';
+import { addDays } from './calendar.js';
 import { T } from './i18n.js';
 
 export const WIDGET_ACTIONS = {
@@ -17,8 +18,12 @@ export const WIDGET_ACTIONS = {
   COMPLETE_TASK: 'complete_task',
 };
 
+/** In the form that adds a task: the choice of no due date. */
+export const NO_DUE = 'none';
+
 // A status list shows ten rows at most; the last one counts the rest.
 const ROWS = 8;
+const DAY_FORMAT = { weekday: 'short', day: 'numeric', month: 'short' };
 
 const cut = (value, max) => {
   const text = String(value ?? '').trim();
@@ -57,8 +62,63 @@ export function itemQuantity(item) {
   return [quantity.replace(/\.0+$/, ''), item.unit].filter(Boolean).join(' ');
 }
 
-/** Today's appointments: `events` are { time: 'HH:MM' | null, name }, in order. */
-export function todayWidget(events) {
+/**
+ * The due dates a tap can pick when adding a task, counted from the family's
+ * `today` ('YYYY-MM-DD'): typing a date on a wall tablet is the last resort.
+ * Saturday is offered when it is neither today nor tomorrow.
+ */
+export function dueChoices(today) {
+  const [year, month, day] = today.split('-').map(Number);
+  const toSaturday = (6 - new Date(year, month - 1, day).getDay() + 7) % 7;
+  return [
+    { value: NO_DUE, label: T.widget.dueNone },
+    { value: today, label: T.widget.dueToday },
+    { value: addDays(today, 1), label: T.widget.dueTomorrow },
+    ...(toSaturday > 1 ? [{ value: addDays(today, toSaturday), label: T.widget.dueSaturday }] : []),
+    { value: addDays(today, 7), label: T.widget.dueNextWeek },
+  ];
+}
+
+/** When a coming appointment is: "Tomorrow 09:30", "Tue, Nov 17", "mar. 17 nov. 09:30". */
+function when(event, today) {
+  const [year, month, day] = event.day.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const text = (language) =>
+    [
+      event.day === addDays(today, 1)
+        ? T.widget.tomorrowDay[language]
+        : new Intl.DateTimeFormat(language, DAY_FORMAT).format(date),
+      event.time,
+    ]
+      .filter(Boolean)
+      .join(' ');
+  return { en: cut(text('en'), 40), fr: cut(text('fr'), 40) };
+}
+
+/**
+ * Today's appointments: `events` are { time: 'HH:MM' | null, name }, in order.
+ * On a day with none, the widget shows the next ones instead of an empty
+ * card: `upcoming` are { day: 'YYYY-MM-DD', time, name }, counted from `today`.
+ */
+export function todayWidget(events, { upcoming = [], today = '' } = {}) {
+  if (events.length === 0 && upcoming.length > 0) {
+    return {
+      ttl_seconds: 300,
+      components: [
+        { type: 'text', text: T.widget.today, variant: 'heading' },
+        { type: 'text', text: T.widget.nothingTodayNext, variant: 'caption' },
+        {
+          type: 'status',
+          items: upcoming.slice(0, ROWS).map((event) => ({
+            label: cut(event.name, 40),
+            value: when(event, today),
+            icon: 'calendar',
+            color: WIDGET_COLORS.NEUTRAL,
+          })),
+        },
+      ],
+    };
+  }
   if (events.length === 0) {
     return messageWidget(T.widget.today, T.widget.nothingToday, 300);
   }
@@ -76,8 +136,11 @@ export function todayWidget(events) {
   };
 }
 
-/** The items still to buy, with the add and check-off forms. */
-export function shoppingWidget(items) {
+/**
+ * The items still to buy, with the add and check-off forms. `readOnly`: the
+ * API token cannot write, so the widget only shows.
+ */
+export function shoppingWidget(items, { readOnly = false } = {}) {
   const components = [{ type: 'text', text: T.widget.shopping, variant: 'heading' }];
   if (items.length === 0) {
     components.push({ type: 'text', text: T.widget.shoppingEmpty, variant: 'body' });
@@ -91,6 +154,9 @@ export function shoppingWidget(items) {
         color: WIDGET_COLORS.PRIMARY,
       })),
     );
+  }
+  if (readOnly) {
+    return { ttl_seconds: 120, components };
   }
   components.push({
     type: 'button',
@@ -178,9 +244,11 @@ export function mealsWidget({ today, tomorrow }) {
 
 /**
  * The tasks still to do, soonest first, with the add and done forms. With a
- * `member`, the widget is that person's: `tasks` are theirs only.
+ * `member`, the widget is that person's: `tasks` are theirs only. `today` is
+ * the family's day, which the due dates of the add form are counted from;
+ * `readOnly`: the API token cannot write, so the widget only shows.
  */
-export function tasksWidget(tasks, member = null) {
+export function tasksWidget(tasks, { member = null, today = '', readOnly = false } = {}) {
   const name = member ? cut(member.name, 24) : '';
   const heading = member ? T.widget.tasksOf(name) : T.widget.tasks;
   const components = [{ type: 'text', text: heading, variant: 'heading' }];
@@ -202,6 +270,9 @@ export function tasksWidget(tasks, member = null) {
       })),
     );
   }
+  if (readOnly) {
+    return { ttl_seconds: 120, components };
+  }
   components.push({
     type: 'button',
     label: T.widget.add,
@@ -217,6 +288,19 @@ export function tasksWidget(tasks, member = null) {
           label: T.widget.task,
           placeholder: T.widget.taskPlaceholder,
         },
+        // Picked in a list; a date typed below wins over it.
+        ...(today
+          ? [
+              {
+                key: 'due',
+                type: 'select',
+                required: false,
+                label: T.widget.due,
+                default: NO_DUE,
+                options: dueChoices(today),
+              },
+            ]
+          : []),
         { key: 'due_date', type: 'string', required: false, label: T.widget.dueDate },
       ],
     },
