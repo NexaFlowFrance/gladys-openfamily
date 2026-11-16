@@ -6,6 +6,8 @@
 import { ERRORS, REASONS } from './openfamily.js';
 
 const plural = (count, one, many) => (count === 1 ? one : many);
+// "de Léa", "d'Alex": French elides before a vowel, and before the h of most first names.
+const frenchOf = (name) => (/^[aeiouyhàâäéèêëîïôöùûüœ]/i.test(name) ? `d'${name}` : `de ${name}`);
 
 export const T = {
   errors: {
@@ -78,6 +80,18 @@ export const T = {
     en: 'No user enabled the calendar yet: enable it in "My calendars" below.',
     fr: "Aucun utilisateur n'a encore activé le calendrier : activez-le dans « Mes calendriers » ci-dessous.",
   },
+  // A first name, in a widget's settings or a scene action, that is nobody's.
+  noMember: (name) => ({
+    en: `Nobody in the OpenFamily family is named "${name}". Write the first name as it is in OpenFamily.`,
+    fr: `Personne dans la famille OpenFamily ne s'appelle « ${name} ». Écrivez le prénom comme dans OpenFamily.`,
+  }),
+  // OpenFamily's own names of the meals of the day.
+  meal: {
+    breakfast: { en: 'Breakfast', fr: 'Petit-déjeuner' },
+    lunch: { en: 'Lunch', fr: 'Déjeuner' },
+    dinner: { en: 'Dinner', fr: 'Dîner' },
+    snack: { en: 'Snack', fr: 'Snack' },
+  },
   calendarName: { en: 'OpenFamily', fr: 'OpenFamily' },
   calendarDescription: {
     en: 'The family calendar of OpenFamily',
@@ -93,8 +107,19 @@ export const T = {
       en: `${count} ${plural(count, 'item', 'items')} to buy`,
       fr: `${count} ${plural(count, 'article', 'articles')} à acheter`,
     }),
+    meals: { en: 'Meals', fr: 'Repas' },
+    noMeals: {
+      en: 'No meal planned today or tomorrow.',
+      fr: "Aucun repas prévu aujourd'hui ni demain.",
+    },
+    tomorrow: (text) => ({ en: `Tomorrow · ${text.en}`, fr: `Demain · ${text.fr}` }),
     tasks: { en: 'Tasks', fr: 'Tâches' },
+    tasksOf: (name) => ({ en: `${name}'s tasks`, fr: `Tâches ${frenchOf(name)}` }),
     tasksEmpty: { en: 'No task to do.', fr: 'Aucune tâche à faire.' },
+    tasksEmptyFor: (name) => ({
+      en: `No task to do for ${name}.`,
+      fr: `Aucune tâche à faire pour ${name}.`,
+    }),
     toDo: (count) => ({
       en: `${count} ${plural(count, 'task', 'tasks')} to do`,
       fr: `${count} ${plural(count, 'tâche', 'tâches')} à faire`,

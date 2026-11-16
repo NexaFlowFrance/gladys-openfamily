@@ -281,7 +281,7 @@ test('fires a trigger for what changed in OpenFamily, never for the first readin
   );
   assert.deepEqual(
     events(gladys, SCENE_TRIGGERS.TASK_COMPLETED).map((event) => event.data),
-    [{ title: 'Trash', count: 0 }],
+    [{ title: 'Trash', assigned_to: '', count: 0 }],
   );
   // The open dashboards are told to pull the new content.
   assert.deepEqual([...new Set(gladys.fake.widgetRefreshes)].sort(), [
@@ -324,8 +324,222 @@ test('fires "task due" once per task on its day', async () => {
   await app.refresh();
   assert.deepEqual(
     events(gladys, SCENE_TRIGGERS.TASK_DUE).map((event) => event.data),
-    [{ title: 'Trash', due: '2026-11-15', count: 2 }],
+    [{ title: 'Trash', due: '2026-11-15', assigned_to: '', count: 2 }],
   );
+});
+
+test('names who a task is assigned to in the task triggers', async () => {
+  const { server, gladys, app } = await setup();
+  server.family = [
+    { id: 'm1', name: 'Léa' },
+    { id: 'm2', name: 'Tom' },
+  ];
+  server.tasks = [
+    {
+      id: 't1',
+      title: 'Trash',
+      due_date: '2026-11-15',
+      is_completed: false,
+      assigned_to: ['m1', 'm2'],
+    },
+  ];
+  await gladys.connect();
+  assert.equal(events(gladys, SCENE_TRIGGERS.TASK_DUE)[0].data.assigned_to, 'Léa, Tom');
+  server.tasks[0].is_completed = true;
+  await app.refresh();
+  assert.deepEqual(
+    events(gladys, SCENE_TRIGGERS.TASK_COMPLETED).map((event) => event.data),
+    [{ title: 'Trash', assigned_to: 'Léa, Tom', count: 0 }],
+  );
+});
+
+test("shows one member's tasks in a widget of their own, and gives them what is added there", async () => {
+  const { server, gladys } = await setup();
+  server.family = [
+    { id: 'm1', name: 'Léa' },
+    { id: 'm2', name: 'Tom Martin' },
+    { id: 'm3', name: 'Alex' },
+  ];
+  server.tasks = [
+    { id: 't1', title: 'Homework', due_date: '2026-11-20', assigned_to: ['m1'] },
+    { id: 't2', title: 'Trash', assigned_to: ['m2'] },
+    { id: 't3', title: 'Dishes', assigned_to: ['m1', 'm2'] },
+    { id: 't4', title: 'Shopping' },
+    { id: 't5', title: 'Done already', assigned_to: ['m1'], is_completed: true },
+  ];
+  await gladys.connect();
+  const widget = async (settings) => {
+    const { content } = (await gladys.fake.widgetGet(WIDGETS.TASKS, { settings })).data;
+    assert.deepEqual(validateWidgetContent(content), []);
+    return content;
+  };
+  const rows = (content) =>
+    content.components
+      .find((component) => component.type === 'status')
+      .items.map((row) => [row.label, row.value]);
+
+  // The family's widget says whose each task is.
+  assert.deepEqual(rows(await widget({})), [
+    ['Homework', 'Léa · 2026-11-20'],
+    ['Trash', 'Tom Martin'],
+    ['Dishes', 'Léa, Tom Martin'],
+    ['Shopping', '-'],
+  ]);
+
+  // Léa's own, however her name is typed.
+  const lea = await widget({ member: ' lea ' });
+  assert.ok(texts(lea).includes('Tâches de Léa') && texts(lea).includes("Léa's tasks"));
+  assert.deepEqual(rows(lea), [
+    ['Homework', '2026-11-20'],
+    ['Dishes', '-'],
+  ]);
+  // A first name is enough when it is one member's only.
+  const tom = await widget({ member: 'Tom' });
+  assert.ok(texts(tom).includes('Tâches de Tom Martin'));
+  assert.deepEqual(rows(tom), [
+    ['Trash', '-'],
+    ['Dishes', '-'],
+  ]);
+  const alex = await widget({ member: 'ALEX' });
+  assert.ok(texts(alex).includes("Tâches d'Alex"));
+  assert.ok(texts(alex).includes('Aucune tâche à faire pour Alex.'));
+  // A name that is nobody's is said, rather than shown as an empty list.
+  assert.match(texts(await widget({ member: 'Zoé' })), /ne s'appelle « Zoé »/);
+
+  // Added from Léa's widget, a task is hers; from the family's, nobody's.
+  const add = (settings, title) =>
+    gladys.fake.widgetAction(
+      WIDGETS.TASKS,
+      WIDGET_ACTIONS.ADD_TASK,
+      {},
+      { settings, values: { title } },
+    );
+  await add({ member: 'Léa' }, 'Piano');
+  assert.deepEqual(server.tasks.at(-1).assigned_to, ['m1']);
+  await add({}, 'Bins');
+  assert.equal(server.tasks.at(-1).assigned_to, undefined);
+  const ack = await add({ member: 'Zoé' }, 'Nothing');
+  assert.match(JSON.stringify(ack.data), /Zoé/);
+  assert.equal(server.tasks.at(-1).title, 'Bins', 'nothing was added for nobody');
+});
+
+test('scene actions read and add the tasks of one member', async () => {
+  const { server, gladys } = await setup();
+  server.family = [
+    { id: 'm1', name: 'Léa' },
+    { id: 'm2', name: 'Tom' },
+  ];
+  server.tasks = [
+    { id: 't1', title: 'Homework', due_date: '2026-11-15', assigned_to: ['m1'] },
+    { id: 't2', title: 'Trash', assigned_to: ['m2'] },
+    { id: 't3', title: 'Dishes', assigned_to: ['m1', 'm2'] },
+  ];
+  await gladys.connect();
+
+  let ack = await gladys.fake.sceneAction(SCENE_ACTIONS.GET_TASKS, { member: 'léa' });
+  assert.deepEqual(ack.data.outputs, { count: 2, due_today: 1, list: 'Homework, Dishes' });
+  ack = await gladys.fake.sceneAction(SCENE_ACTIONS.GET_TASKS, { member: '' });
+  assert.equal(ack.data.outputs.count, 3);
+  // A scene that names nobody fails, with a reason its author can read.
+  ack = await gladys.fake.sceneAction(SCENE_ACTIONS.GET_TASKS, { member: 'Zoé' });
+  assert.equal(ack.success, false);
+  assert.match(JSON.stringify(ack), /Zoé/);
+
+  ack = await gladys.fake.sceneAction(SCENE_ACTIONS.ADD_TASK, { title: 'Piano', member: 'Tom' });
+  assert.deepEqual(ack.data.outputs, { title: 'Piano', count: 4 });
+  assert.deepEqual(server.tasks.at(-1).assigned_to, ['m2']);
+  ack = await gladys.fake.sceneAction(SCENE_ACTIONS.ADD_TASK, { title: 'Lost', member: 'Zoé' });
+  assert.equal(ack.success, false);
+  assert.equal(server.tasks.length, 4);
+});
+
+test('shows the meals of today and tomorrow, and reads the menu to a scene', async () => {
+  const { server, gladys } = await setup();
+  await gladys.connect();
+  const widget = async () => {
+    const { content } = (await gladys.fake.widgetGet(WIDGETS.MEALS)).data;
+    assert.deepEqual(validateWidgetContent(content), []);
+    return content;
+  };
+  const rows = (content) =>
+    content.components
+      .find((component) => component.type === 'status')
+      .items.map((row) => [row.label, row.value.fr, row.value.en]);
+  const menu = async (fields) =>
+    (await gladys.fake.sceneAction(SCENE_ACTIONS.GET_MEALS, fields)).data.outputs;
+
+  assert.match(texts(await widget()), /Aucun repas prévu/);
+  assert.deepEqual(await menu({}), {
+    count: 0,
+    menu: '',
+    breakfast: '',
+    lunch: '',
+    dinner: '',
+    snack: '',
+  });
+
+  server.meals = [
+    { date: '2026-11-14', meal_type: 'Dîner', custom_meal: 'Yesterday soup' },
+    { date: '2026-11-15', meal_type: 'Dîner', recipe_name: 'Lasagne', custom_meal: 'ignored' },
+    { date: '2026-11-15', meal_type: 'Déjeuner', custom_meal: ' Salade ' },
+    { date: '2026-11-15', meal_type: 'Petit-déjeuner', custom_meal: 'Pancakes' },
+    { date: '2026-11-15', meal_type: 'Snack', custom_meal: '' },
+    { date: '2026-11-16', meal_type: 'Brunch', custom_meal: 'Œufs' },
+    { date: '2026-11-16', meal_type: 'Dîner', custom_meal: 'Pizza' },
+    { date: '2026-11-17', meal_type: 'Dîner', custom_meal: 'Later' },
+  ];
+  // Today in the order of the day, then tomorrow; a recipe wins over typed words.
+  assert.deepEqual(rows(await widget()), [
+    ['Pancakes', 'Petit-déjeuner', 'Breakfast'],
+    ['Salade', 'Déjeuner', 'Lunch'],
+    ['Lasagne', 'Dîner', 'Dinner'],
+    ['Pizza', 'Demain · Dîner', 'Tomorrow · Dinner'],
+    ['Œufs', 'Demain · Brunch', 'Tomorrow · Brunch'],
+  ]);
+  assert.equal(
+    decodeURIComponent(asked(server, '/api/meal-plans').at(-1).search),
+    '?start_date=2026-11-15&end_date=2026-11-16',
+  );
+
+  assert.deepEqual(await menu({ day: 'today' }), {
+    count: 3,
+    menu: 'Pancakes, Salade, Lasagne',
+    breakfast: 'Pancakes',
+    lunch: 'Salade',
+    dinner: 'Lasagne',
+    snack: '',
+  });
+  assert.deepEqual(await menu({ day: 'tomorrow' }), {
+    count: 2,
+    menu: 'Pizza, Œufs',
+    breakfast: '',
+    lunch: '',
+    dinner: 'Pizza',
+    snack: '',
+  });
+  assert.deepEqual(await menu({}), await menu({ day: 'today' }), 'today unless told otherwise');
+
+  // Nothing today, something tomorrow: said above the list.
+  server.meals = [{ date: '2026-11-16', meal_type: 'Dîner', custom_meal: 'Pizza' }];
+  const content = await widget();
+  assert.match(texts(content), /Rien de prévu aujourd'hui/);
+  assert.deepEqual(rows(content), [['Pizza', 'Demain · Dîner', 'Tomorrow · Dinner']]);
+});
+
+test('tells a widget to pull again when the meal plan or the family changes', async (t) => {
+  const { server, gladys, app } = await setup();
+  await gladys.connect();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  server.requests.length = 0;
+  const nudges = gladys.fake.widgetRefreshes.length;
+  for (const entity of ['meal-plans', 'meal-plans', 'family']) app.liveUpdate(entity);
+  t.mock.timers.tick(1500);
+  await until(() => gladys.fake.widgetRefreshes.length >= nudges + 2);
+  assert.deepEqual(gladys.fake.widgetRefreshes.slice(nudges).sort(), [
+    WIDGETS.MEALS,
+    WIDGETS.TASKS,
+  ]);
+  assert.deepEqual(server.requests, [], 'the widget reads when it is shown, not the integration');
 });
 
 test('waits for the hour of the day before firing "task due"', async () => {

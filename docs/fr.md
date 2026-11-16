@@ -10,11 +10,12 @@ dans Gladys ce qui sert au quotidien dans la maison :
   **Calendrier** et utilisable par les scènes (« un événement du calendrier approche »). Les
   rendez-vous récurrents et les journées entières sont pris en charge, sur un mois d'historique et
   douze mois à venir.
-- **Trois widgets** de tableau de bord : les rendez-vous du jour, la liste de courses et les
-  tâches. Les deux derniers ont un bouton pour ajouter et un bouton pour cocher.
-- **Quatre actions de scène** : ajouter un article à la liste de courses, ajouter une tâche, lire
-  la liste de courses, lire les tâches. Les deux dernières donnent leur résultat aux actions
-  suivantes de la scène (par exemple pour l'annoncer sur une enceinte).
+- **Quatre widgets** de tableau de bord : les rendez-vous du jour, la liste de courses, les tâches
+  et les repas. Les courses et les tâches ont un bouton pour ajouter et un bouton pour cocher. Le
+  widget des tâches peut être celui d'un seul membre de la famille.
+- **Cinq actions de scène** : ajouter un article à la liste de courses, ajouter une tâche, lire
+  la liste de courses, lire les tâches, lire le menu. Les trois dernières donnent leur résultat
+  aux actions suivantes de la scène (par exemple pour l'annoncer sur une enceinte).
 - **Trois déclencheurs de scène** : un article ajouté à la liste, une tâche terminée, une tâche à
   faire aujourd'hui.
 
@@ -50,7 +51,25 @@ C'est l'intégration officielle d'OpenFamily, développée et maintenue par
    de bord et l'utiliser dans les scènes. Le calendrier est le même pour toute la famille :
    **un seul utilisateur** doit l'activer, sinon chaque événement apparaît en double.
 5. Ajoutez les widgets depuis l'édition du tableau de bord : ils s'appellent « OpenFamily :
-   aujourd'hui », « OpenFamily : liste de courses » et « OpenFamily : tâches ».
+   aujourd'hui », « OpenFamily : liste de courses », « OpenFamily : tâches » et « OpenFamily :
+   repas ».
+
+**Un widget de tâches par membre.** Dans les réglages du widget « OpenFamily : tâches », saisissez
+un prénom tel qu'il est écrit sur la page Famille d'OpenFamily : le widget n'affiche plus que les
+tâches attribuées à cette personne, et une tâche ajoutée depuis ce widget lui est attribuée.
+Ajoutez le widget une fois par enfant pour donner à chacun sa liste. Sans prénom, le widget montre
+les tâches de toute la famille, avec le nom de la personne à qui chacune est attribuée.
+
+**Les repas.** Le widget « OpenFamily : repas » affiche les repas prévus aujourd'hui et demain
+dans le planning des repas d'OpenFamily. L'action de scène « Lire le menu » donne aux actions
+suivantes le menu du jour ou du lendemain : tout le menu, ou séparément le petit-déjeuner, le
+déjeuner, le dîner et le snack. Une scène peut ainsi annoncer le dîner sur une enceinte en fin
+d'après-midi.
+
+**Les membres dans les scènes.** Les déclencheurs « Tâche terminée » et « Tâche à faire
+aujourd'hui » donnent la variable « Attribuée à », les prénoms des membres concernés. Les actions
+« Lire les tâches » et « Ajouter une tâche » acceptent un prénom, pour ne lire que les tâches d'un
+membre ou lui en attribuer une.
 
 Réglages facultatifs :
 
@@ -100,6 +119,12 @@ Le message affiché sur la page de l'intégration dit ce qui ne va pas :
 
 Autres cas :
 
+- **« Personne dans la famille OpenFamily ne s'appelle … »** : le prénom saisi dans les réglages
+  du widget ou dans l'action de scène n'est celui d'aucun membre. Écrivez-le comme sur la page
+  Famille d'OpenFamily ; les majuscules et les accents ne comptent pas. Si deux membres portent
+  le même prénom, écrivez le nom complet de celui que vous voulez.
+- **Le widget des repas est vide** : il lit le planning des repas d'OpenFamily, pour aujourd'hui
+  et demain. Un repas sans recette ni texte n'est pas affiché.
 - **Les événements apparaissent en double** : deux utilisateurs ont activé le calendrier.
   Désactivez-le pour l'un des deux et partagez celui qui reste avec le foyer.
 - **Les heures sont décalées** : vérifiez le fuseau horaire de la famille dans OpenFamily, sous

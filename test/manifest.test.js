@@ -24,6 +24,7 @@ const allFields = [
   ...[...manifest.actions, ...manifest.scene_triggers, ...manifest.scene_actions].flatMap(
     (item) => item.fields ?? [],
   ),
+  ...manifest.widgets.flatMap((widget) => widget.settings ?? []),
 ];
 
 test('actions, scene actions, scene triggers and widgets match the code, both ways', () => {
@@ -53,10 +54,54 @@ test('config_schema defaults stay consistent with DEFAULT_CONFIG', () => {
 
 test('the token is a secret, and no other field could hold one', () => {
   const secrets = allFields.filter((field) => field.type === 'secret').map((field) => field.key);
+  // Widget settings and scene fields are among them: they are not for credentials.
   assert.deepEqual(secrets, ['token']);
-  // Widget settings and scene fields are not for credentials.
+});
+
+test('the widgets fit what a dashboard accepts from one integration', () => {
+  assert.ok(manifest.widgets.length <= 5);
+  // The store refuses a manifest whose widget description is longer.
   for (const widget of manifest.widgets) {
-    assert.equal(widget.settings, undefined);
+    for (const [lang, text] of Object.entries(widget.description)) {
+      assert.ok(text.length <= 100, `${widget.key}.${lang}: ${text.length}`);
+    }
+  }
+  // A setting a dashboard may leave empty: a widget dropped on it works at once.
+  for (const setting of manifest.widgets.flatMap((widget) => widget.settings ?? [])) {
+    assert.equal(setting.required, false, setting.key);
+  }
+});
+
+test('what a scene declaration promises is never taken back', () => {
+  const keys = (list, key, part) =>
+    (list.find((item) => item.key === key)[part] ?? []).map((entry) => entry.key);
+  // Scenes are written against these keys: a list here only grows.
+  assert.deepEqual(keys(manifest.scene_triggers, 'task_due', 'variables'), [
+    'title',
+    'due',
+    'assigned_to',
+    'count',
+  ]);
+  assert.deepEqual(keys(manifest.scene_triggers, 'task_completed', 'variables'), [
+    'title',
+    'assigned_to',
+    'count',
+  ]);
+  assert.deepEqual(keys(manifest.scene_actions, 'get_meals', 'outputs'), [
+    'count',
+    'menu',
+    'breakfast',
+    'lunch',
+    'dinner',
+    'snack',
+  ]);
+  // A field added to an action that scenes already use must stay optional.
+  for (const action of manifest.scene_actions) {
+    for (const field of action.fields ?? []) {
+      if (!['item', 'title'].includes(field.key)) {
+        assert.equal(field.required, false, `${action.key}.${field.key}`);
+      }
+    }
   }
 });
 

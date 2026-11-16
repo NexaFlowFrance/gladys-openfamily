@@ -209,12 +209,28 @@ export class OpenFamilyClient {
     return this.request('GET', '/api/tasks');
   }
 
-  addTask({ title, dueDate }) {
-    return this.request('POST', '/api/tasks', { title, ...(dueDate ? { due_date: dueDate } : {}) });
+  /** `assignedTo`: the ids of the family members the task is for. */
+  addTask({ title, dueDate, assignedTo = [] }) {
+    return this.request('POST', '/api/tasks', {
+      title,
+      ...(dueDate ? { due_date: dueDate } : {}),
+      ...(assignedTo.length > 0 ? { assigned_to: assignedTo } : {}),
+    });
   }
 
   completeTask(id) {
     return this.request('PUT', `/api/tasks/${encodeURIComponent(id)}`, { is_completed: true });
+  }
+
+  /** The members of the family: { id, name, ... }. */
+  family() {
+    return this.request('GET', '/api/family');
+  }
+
+  /** The meals planned from one day to another, both included ('YYYY-MM-DD'). */
+  meals(firstDay, lastDay) {
+    const query = new URLSearchParams({ start_date: firstDay, end_date: lastDay });
+    return this.request('GET', `/api/meal-plans?${query}`);
   }
 
   /** Appointments between two local date-times, recurring ones expanded into occurrences. */

@@ -28,20 +28,23 @@ This is the official OpenFamily integration for Gladys Assistant, built and main
 
 ## ✨ What you get
 
-|                          |                                                                                                                             |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| 📅 **Family calendar**   | The OpenFamily calendar as a Gladys calendar, kept up to date: recurring and full-day events, one month back, twelve ahead  |
-| 🧩 **Dashboard widgets** | Today's appointments, the shopping list and the tasks, with buttons to add an entry and to check one off                    |
-| 🎬 **Scene actions**     | Add to the shopping list, add a task, read the shopping list, read the tasks                                                |
-| ⚡ **Scene triggers**    | Item added to the shopping list, task completed, task due today                                                             |
-| 🔔 **Reminders**         | With Gladys' own trigger "an event of the calendar is coming", on the shared OpenFamily calendar                            |
-| 🔄 **Live updates**      | A change made in OpenFamily reaches Gladys within seconds                                                                   |
-| 🔐 **Private by design** | The integration talks to your Gladys and to your OpenFamily server, and to nothing else. Gladys never changes your calendar |
+|                           |                                                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 📅 **Family calendar**    | The OpenFamily calendar as a Gladys calendar, kept up to date: recurring and full-day events, one month back, twelve ahead  |
+| 🧩 **Dashboard widgets**  | Today's appointments, the shopping list, the tasks and the meals, with buttons to add an entry and to check one off         |
+| 🎬 **Scene actions**      | Add to the shopping list, add a task, read the shopping list, read the tasks, read the menu                                 |
+| ⚡ **Scene triggers**     | Item added to the shopping list, task completed, task due today                                                             |
+| 👧 **One list per child** | The tasks widget can show a single family member's tasks, and the task triggers say who a task is assigned to               |
+| 🔔 **Reminders**          | With Gladys' own trigger "an event of the calendar is coming", on the shared OpenFamily calendar                            |
+| 🔄 **Live updates**       | A change made in OpenFamily reaches Gladys within seconds                                                                   |
+| 🔐 **Private by design**  | The integration talks to your Gladys and to your OpenFamily server, and to nothing else. Gladys never changes your calendar |
 
 ## 💡 Ideas for scenes
 
 - 🌅 When the family wakes up, read today's tasks and announce them on a speaker.
 - 🧈 A button on the fridge that adds butter to the shopping list.
+- 🍽️ At six in the evening, announce tonight's dinner on the kitchen speaker.
+- 🧒 On the tablet in each child's room, their own list of tasks.
 - 🛒 A message to whoever is at the shop when an item is added to the list.
 - 🦷 The hallway light turns on fifteen minutes before the dentist appointment.
 - ✅ A word of congratulations when someone completes a task.
@@ -85,7 +88,9 @@ src/app.js          reading loop, calendar mirroring, widget, scene and action h
 src/openfamily.js   the OpenFamily REST client
 src/live.js         OpenFamily's real-time channel (WebSocket)
 src/calendar.js     appointments to Gladys events, sync windows
-src/widgets.js      the contents of the three widgets
+src/widgets.js      the contents of the widgets
+src/family.js       family members: who a first name stands for, who a task is for
+src/meals.js        the meal plan, in the order of the day
 src/config.js       configuration defaults and normalization
 src/state.js        what is remembered through a restart, kept in /data
 src/i18n.js         every text, in English and French

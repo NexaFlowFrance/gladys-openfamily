@@ -9,11 +9,12 @@ the household uses every day:
 - **The family calendar** becomes a Gladys calendar, kept up to date, shown in the **Calendar**
   view and usable in scenes ("an event of the calendar is coming"). Recurring appointments and
   full-day events are supported, over one month of history and twelve months ahead.
-- **Three dashboard widgets**: today's appointments, the shopping list and the tasks. The last
-  two have a button to add an entry and a button to check one off.
-- **Four scene actions**: add an item to the shopping list, add a task, read the shopping list,
-  read the tasks. The last two hand their result to the next actions of the scene (to announce it
-  on a speaker, for instance).
+- **Four dashboard widgets**: today's appointments, the shopping list, the tasks and the meals.
+  The shopping list and the tasks have a button to add an entry and a button to check one off.
+  The tasks widget can be the one of a single family member.
+- **Five scene actions**: add an item to the shopping list, add a task, read the shopping list,
+  read the tasks, read the menu. The last three hand their result to the next actions of the
+  scene (to announce it on a speaker, for instance).
 - **Three scene triggers**: an item added to the list, a task completed, a task due today.
 
 Gladys never changes the OpenFamily calendar. It only writes to OpenFamily when you add or check
@@ -48,7 +49,22 @@ This is the official OpenFamily integration, built and maintained by
    use it in scenes. The calendar is the same for the whole family: **one user only** should enable
    it, or every event shows twice.
 5. Add the widgets from the dashboard editor: they are named "OpenFamily: today", "OpenFamily:
-   shopping list" and "OpenFamily: tasks".
+   shopping list", "OpenFamily: tasks" and "OpenFamily: meals".
+
+**A tasks widget per member.** In the settings of the "OpenFamily: tasks" widget, type a first
+name as it is written on the Family page of OpenFamily: the widget then shows only the tasks
+assigned to that person, and a task added from this widget is assigned to them. Add the widget
+once per child to give each of them their own list. Without a first name, the widget shows the
+tasks of the whole family, with the name of the person each one is assigned to.
+
+**Meals.** The "OpenFamily: meals" widget shows the meals planned today and tomorrow in the meal
+planner of OpenFamily. The "Read the menu" scene action hands the menu of today or tomorrow to
+the next actions: the whole menu, or breakfast, lunch, dinner and snack separately. A scene can
+then announce dinner on a speaker at the end of the afternoon.
+
+**Family members in scenes.** The "Task completed" and "Task due today" triggers give the
+"Assigned to" variable, the first names of the members concerned. The "Read the tasks" and "Add a
+task" actions take a first name, to read only one member's tasks or to assign one to them.
 
 Optional settings:
 
@@ -97,6 +113,12 @@ The message shown on the integration page says what is wrong:
 
 Other cases:
 
+- **"Nobody in the OpenFamily family is named ..."**: the first name typed in the widget settings
+  or in the scene action is not the one of any member. Write it as on the Family page of
+  OpenFamily; capitals and accents do not matter. If two members share a first name, write the
+  full name of the one you mean.
+- **The meals widget is empty**: it reads the meal planner of OpenFamily, for today and tomorrow.
+  A meal with neither a recipe nor a text is not shown.
 - **Events show twice**: two users enabled the calendar. Disable it for one of them and share the
   remaining one with the household.
 - **Times are shifted**: check the family's time zone in OpenFamily, under **Settings**, then

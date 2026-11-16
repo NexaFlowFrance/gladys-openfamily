@@ -9,10 +9,11 @@ import { createHash } from 'node:crypto';
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { isConfigured, normalizeConfig, normalizeTimeZone } from './config.js';
 import { OpenFamilyClient, OpenFamilyError, ERRORS } from './openfamily.js';
-import { localDay, naive, splitWindows, syncWindow, toGladysEvent } from './calendar.js';
+import { addDays, localDay, naive, splitWindows, syncWindow, toGladysEvent } from './calendar.js';
 import {
   WIDGET_ACTIONS,
   itemQuantity,
+  mealsWidget,
   messageWidget,
   shoppingWidget,
   tasksWidget,
@@ -20,17 +21,20 @@ import {
 } from './widgets.js';
 import { connectLive } from './live.js';
 import { STATE_DIR, createStateStore } from './state.js';
+import { assignees, findMember } from './family.js';
+import { dayMeals } from './meals.js';
 import { T, errorText } from './i18n.js';
 
 const logger = createLogger({ name: 'openfamily' });
 
 export const ACTIONS = { TEST: 'test_connection', SYNC: 'sync_now' };
-export const WIDGETS = { TODAY: 'today', SHOPPING: 'shopping', TASKS: 'tasks' };
+export const WIDGETS = { TODAY: 'today', SHOPPING: 'shopping', TASKS: 'tasks', MEALS: 'meals' };
 export const SCENE_ACTIONS = {
   ADD_ITEM: 'add_shopping_item',
   ADD_TASK: 'add_task',
   GET_SHOPPING: 'get_shopping_list',
   GET_TASKS: 'get_tasks',
+  GET_MEALS: 'get_meals',
 };
 export const SCENE_TRIGGERS = {
   ITEM_ADDED: 'shopping_item_added',
@@ -42,8 +46,12 @@ const CALENDAR_COLOR = '#16a34a';
 // What the real-time channel can announce that this integration shows.
 const LIVE_LISTS = new Set(['shopping', 'tasks']);
 const LIVE_APPOINTMENTS = 'appointments';
+// What it announces that is read by a widget only: no reading, the widget is
+// told to pull again. A member renamed changes whose tasks are whose.
+const LIVE_WIDGETS = { 'meal-plans': WIDGETS.MEALS, family: WIDGETS.TASKS };
 const MAX_EVENT_TEXT = 200;
 const MAX_OUTPUT_TEXT = 1000;
+const MAX_NAME = 40;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const bounded = (value, max = MAX_EVENT_TEXT) => String(value ?? '').slice(0, max);
@@ -52,15 +60,38 @@ const dueDay = (task) => (typeof task.due_date === 'string' ? task.due_date.slic
 /** The items still to buy. */
 export const pendingItems = (items) => (items ?? []).filter((item) => !item.is_checked);
 
-/** The tasks still to do, soonest first, undated ones last. */
+/**
+ * The tasks still to do, soonest first, undated ones last. `assignedTo` holds
+ * the ids of the members a task is for, `who` their names.
+ */
 export function pendingTasks(tasks, today) {
   return (tasks ?? [])
     .filter((task) => !task.is_completed)
     .map((task) => {
       const due = dueDay(task);
-      return { id: task.id, title: task.title, due, overdue: Boolean(due) && due < today };
+      return {
+        id: task.id,
+        title: task.title,
+        due,
+        overdue: Boolean(due) && due < today,
+        assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.map(String) : [],
+        who: assignees(task),
+      };
     })
     .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+}
+
+/** Among pending tasks, the ones of a member of the family. */
+export const tasksOf = (tasks, member) =>
+  tasks.filter((task) => task.assignedTo.includes(String(member.id)));
+
+/** A first name given in a widget's settings or a scene action that is nobody's. */
+class UnknownMember extends Error {
+  constructor(name) {
+    const text = T.noMember(name);
+    super(text.en);
+    this.text = text;
+  }
 }
 
 export class OpenFamilyApp {
@@ -83,6 +114,7 @@ export class OpenFamilyApp {
     this.config = normalizeConfig();
     this.client = new OpenFamilyClient({ url: '', token: '' });
     this.running = Promise.resolve();
+    this.liveWidgets = new Set();
     this.store = createStateStore(stateDir);
     // The "task due" triggers already fired, as "<task id>:<day>". Unlike the
     // rest, it outlives a reconnection and a restart of the container (an
@@ -211,6 +243,7 @@ export class OpenFamilyApp {
     this.liveRefused = false;
     this.liveLists = false;
     this.liveAppointments = false;
+    this.liveWidgets = new Set();
   }
 
   configUpdated(rawConfig) {
@@ -250,12 +283,17 @@ export class OpenFamilyApp {
   liveUpdate(entity) {
     if (entity === LIVE_APPOINTMENTS) this.liveAppointments = true;
     else if (LIVE_LISTS.has(entity)) this.liveLists = true;
+    else if (LIVE_WIDGETS[entity]) this.liveWidgets.add(LIVE_WIDGETS[entity]);
     else return;
     clearTimeout(this.liveTimer);
     this.liveTimer = setTimeout(async () => {
-      const { liveLists: lists, liveAppointments: appointments } = this;
+      const { liveLists: lists, liveAppointments: appointments, liveWidgets: widgets } = this;
       this.liveLists = false;
       this.liveAppointments = false;
+      this.liveWidgets = new Set();
+      for (const widgetKey of widgets) {
+        this.nudge(widgetKey);
+      }
       try {
         if (lists) {
           await this.refresh();
@@ -345,7 +383,11 @@ export class OpenFamilyApp {
         if (task.is_completed && before && !before.is_completed) {
           events.push({
             key: SCENE_TRIGGERS.TASK_COMPLETED,
-            data: { title: bounded(task.title), count: pending.length },
+            data: {
+              title: bounded(task.title),
+              assigned_to: bounded(assignees(task)),
+              count: pending.length,
+            },
           });
         }
       }
@@ -362,7 +404,12 @@ export class OpenFamilyApp {
           this.firedDue.add(dueKey);
           events.push({
             key: SCENE_TRIGGERS.TASK_DUE,
-            data: { title: bounded(task.title), due: task.due, count: pending.length },
+            data: {
+              title: bounded(task.title),
+              due: task.due,
+              assigned_to: bounded(task.who),
+              count: pending.length,
+            },
             dueKey,
           });
         }
@@ -482,23 +529,53 @@ export class OpenFamilyApp {
 
   // --- Widgets ---------------------------------------------------------------------
 
-  async widgetGet(key) {
+  /** The content of a widget; `settings` are the ones of that instance on the dashboard. */
+  async widgetGet(key, settings = {}) {
     const headings = {
       [WIDGETS.TODAY]: T.widget.today,
       [WIDGETS.SHOPPING]: T.widget.shopping,
       [WIDGETS.TASKS]: T.widget.tasks,
+      [WIDGETS.MEALS]: T.widget.meals,
     };
     try {
       if (key === WIDGETS.SHOPPING) {
         return shoppingWidget(pendingItems(await this.client.shopping()));
       }
       if (key === WIDGETS.TASKS) {
-        return tasksWidget(pendingTasks(await this.client.tasks(), localDay(this.now())));
+        const [tasks, member] = await Promise.all([
+          this.client.tasks(),
+          this.member(settings?.member),
+        ]);
+        const pending = pendingTasks(tasks, localDay(this.now()));
+        return member ? tasksWidget(tasksOf(pending, member), member) : tasksWidget(pending);
+      }
+      if (key === WIDGETS.MEALS) {
+        return mealsWidget(await this.meals());
       }
       return todayWidget(await this.todayEvents());
     } catch (err) {
-      return messageWidget(headings[key], errorText(err), 60);
+      return messageWidget(headings[key], err.text ?? errorText(err), 60);
     }
+  }
+
+  /**
+   * The member of the family a typed first name stands for; null without a
+   * name. A name that is nobody's is an error the user has to read.
+   */
+  async member(name) {
+    const wanted = bounded(typeof name === 'string' ? name.trim() : '', MAX_NAME);
+    if (!wanted) return null;
+    const found = findMember(await this.client.family(), wanted);
+    if (!found) throw new UnknownMember(wanted);
+    return found;
+  }
+
+  /** Today's and tomorrow's planned meals, each in the order of the day. */
+  async meals() {
+    const today = localDay(this.now());
+    const tomorrow = addDays(today, 1);
+    const plans = await this.client.meals(today, tomorrow);
+    return { today: dayMeals(plans, today), tomorrow: dayMeals(plans, tomorrow) };
   }
 
   /** Today's appointments as the widget shows them, full-day ones first. */
@@ -518,8 +595,11 @@ export class OpenFamilyApp {
       .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
   }
 
-  /** A button of a widget was tapped; `values` is the form the user filled. */
-  async widgetAction(actionKey, values) {
+  /**
+   * A button of a widget was tapped; `values` is the form the user filled,
+   * `settings` the ones of the widget it was tapped on.
+   */
+  async widgetAction(actionKey, values, settings = {}) {
     // A Gladys older than 5.2 drops the form and relays the tap without values.
     if (!values) {
       return T.widget.needsUpdate;
@@ -545,7 +625,13 @@ export class OpenFamilyApp {
             return T.widget.badDate;
           }
           const title = bounded(String(values.title ?? '').trim());
-          await this.client.addTask({ title, dueDate: due });
+          // Added from a member's own widget, a task is theirs.
+          const member = await this.member(settings?.member);
+          await this.client.addTask({
+            title,
+            dueDate: due,
+            assignedTo: member ? [member.id] : [],
+          });
           await this.refreshQuietly();
           return T.widget.taskAdded(title);
         }
@@ -560,6 +646,7 @@ export class OpenFamilyApp {
           return undefined;
       }
     } catch (err) {
+      if (err.text) return err.text;
       // An entry that left the list since the form was drawn.
       return err.code === ERRORS.SERVER ? T.widget.gone : errorText(err);
     }
@@ -596,7 +683,12 @@ export class OpenFamilyApp {
           const due = String(fields.due_date ?? '').trim();
           if (!title) throw new Error('The title is empty.');
           if (due && !DATE.test(due)) throw new Error(T.widget.badDate.en);
-          await this.client.addTask({ title, dueDate: due });
+          const member = await this.member(fields.member);
+          await this.client.addTask({
+            title,
+            dueDate: due,
+            assignedTo: member ? [member.id] : [],
+          });
           await this.refreshQuietly();
           return { title, count: this.pendingTaskCount() };
         }
@@ -610,11 +702,32 @@ export class OpenFamilyApp {
         }
         case SCENE_ACTIONS.GET_TASKS: {
           const today = localDay(this.now());
-          const tasks = pendingTasks(await this.client.tasks(), today);
+          const [all, member] = await Promise.all([
+            this.client.tasks(),
+            this.member(fields.member),
+          ]);
+          const pending = pendingTasks(all, today);
+          const tasks = member ? tasksOf(pending, member) : pending;
           return {
             count: tasks.length,
             due_today: tasks.filter((task) => task.due === today).length,
             list: bounded(tasks.map((task) => task.title).join(', '), MAX_OUTPUT_TEXT),
+          };
+        }
+        case SCENE_ACTIONS.GET_MEALS: {
+          const today = localDay(this.now());
+          const day = fields.day === 'tomorrow' ? addDays(today, 1) : today;
+          const meals = dayMeals(await this.client.meals(day, day), day);
+          const names = (list) =>
+            bounded(list.map((meal) => meal.name).join(', '), MAX_OUTPUT_TEXT);
+          const of = (type) => names(meals.filter((meal) => meal.type === type));
+          return {
+            count: meals.length,
+            menu: names(meals),
+            breakfast: of('breakfast'),
+            lunch: of('lunch'),
+            dinner: of('dinner'),
+            snack: of('snack'),
           };
         }
         default:
@@ -644,9 +757,9 @@ export function registerHandlers(gladys, options = {}) {
     gladys.onSceneAction(key, (fields) => app.sceneAction(key, fields));
   }
   for (const key of Object.values(WIDGETS)) {
-    gladys.onWidgetGet(key, () => app.widgetGet(key));
+    gladys.onWidgetGet(key, (context) => app.widgetGet(key, context?.settings));
     gladys.onWidgetAction(key, (actionKey, _params, context) =>
-      app.widgetAction(actionKey, context?.values),
+      app.widgetAction(actionKey, context?.values, context?.settings),
     );
   }
   gladys.onConfigUpdated((config) => app.configUpdated(config));

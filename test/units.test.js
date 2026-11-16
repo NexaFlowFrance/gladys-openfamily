@@ -18,6 +18,8 @@ import {
 } from '../src/openfamily.js';
 import { splitWindows, syncWindow, toGladysEvent } from '../src/calendar.js';
 import { createStateStore } from '../src/state.js';
+import { assignees, findMember, plainName } from '../src/family.js';
+import { dayMeals, mealName } from '../src/meals.js';
 import { T, errorText } from '../src/i18n.js';
 
 test('normalizes the configuration, with the manifest defaults', () => {
@@ -123,6 +125,10 @@ test('every error has a text in both languages, short enough for a widget button
     }
   }
   assert.equal(seen.size, errors.length, 'one text per error and per reason');
+  // The longest first name kept still leaves room for the sentence around it.
+  for (const text of Object.values(T.noMember('x'.repeat(40)))) {
+    assert.ok(text.length <= 200, String(text.length));
+  }
   assert.equal(errorText(new Error('anything else')), T.errors[ERRORS.SERVER]);
   assert.equal(
     errorText(new OpenFamilyError(ERRORS.UNREACHABLE, 'ECONNRESET')),
@@ -152,6 +158,66 @@ test('keeps its state in a file, and does without when it cannot', async (t) => 
   const missing = createStateStore(join(dir, 'missing'));
   assert.equal(missing.save({ firedDue: [] }), false);
   assert.deepEqual(missing.load(), {});
+});
+
+test('finds the family member a typed first name stands for', () => {
+  const family = [
+    { id: 'm1', name: 'Léa' },
+    { id: 'm2', name: 'Tom Martin' },
+    { id: 'm3', name: 'Tom Durand' },
+    { id: 'm4', name: 'Anne-Sophie' },
+    { id: 'm5' },
+  ];
+  assert.equal(plainName('  Éloïse '), 'eloise');
+  assert.equal(findMember(family, 'léa').id, 'm1');
+  assert.equal(findMember(family, ' LEA ').id, 'm1');
+  assert.equal(findMember(family, 'tom martin').id, 'm2');
+  assert.equal(findMember(family, 'anne-sophie').id, 'm4');
+  // A first name two members share tells nobody; nor does part of a name.
+  assert.equal(findMember(family, 'Tom'), undefined);
+  assert.equal(findMember(family, 'Anne'), undefined);
+  assert.equal(findMember(family, 'Zoé'), undefined);
+  assert.equal(findMember(family, ''), undefined);
+  assert.equal(findMember(undefined, 'Léa'), undefined);
+  // The full name wins over a first name that is also someone else's.
+  assert.equal(findMember([...family, { id: 'm6', name: 'Tom' }], 'tom').id, 'm6');
+
+  assert.equal(
+    assignees({ assigned_to_members: [{ name: 'Léa' }, { name: ' Tom ' }, {}] }),
+    'Léa, Tom',
+  );
+  assert.equal(assignees({ assigned_to_members: [] }), '');
+  assert.equal(assignees({}), '');
+});
+
+test('reads the meals of a day in the order of the day', () => {
+  const plans = [
+    { date: '2026-11-15', meal_type: 'Snack', custom_meal: 'Fruit' },
+    { date: '2026-11-15', meal_type: 'Dîner', recipe: { name: 'Lasagne' }, custom_meal: 'typed' },
+    { date: '2026-11-15', meal_type: 'Brunch', custom_meal: 'Eggs' },
+    { date: '2026-11-15', meal_type: 'Petit-déjeuner', custom_meal: ' Pancakes ' },
+    { date: '2026-11-15T00:00:00', meal_type: 'Déjeuner', custom_meal: 'Salad' },
+    { date: '2026-11-15', meal_type: 'Dîner', recipe: null, custom_meal: null },
+    { date: '2026-11-16', meal_type: 'Dîner', custom_meal: 'Tomorrow' },
+    { meal_type: 'Dîner', custom_meal: 'No date' },
+    null,
+  ];
+  assert.deepEqual(
+    dayMeals(plans, '2026-11-15').map((meal) => [meal.type, meal.name]),
+    [
+      ['breakfast', 'Pancakes'],
+      ['lunch', 'Salad'],
+      ['dinner', 'Lasagne'],
+      ['snack', 'Fruit'],
+      ['', 'Eggs'],
+    ],
+  );
+  // A meal type of the family's own keeps its name.
+  assert.equal(dayMeals(plans, '2026-11-15').at(-1).label, 'Brunch');
+  assert.deepEqual(dayMeals(plans, '2026-11-17'), []);
+  assert.deepEqual(dayMeals(undefined, '2026-11-15'), []);
+  assert.equal(mealName({ recipe: { name: 'Soup' }, custom_meal: 'x' }), 'Soup');
+  assert.equal(mealName({}), '');
 });
 
 const idFor = (id) => `ext:x:u:${id}`;

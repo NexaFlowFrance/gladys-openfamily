@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------------
-// The contents of the three dashboard widgets. Pure: data in, declarative
-// content out, rendered by Gladys with its own theme.
+// The contents of the dashboard widgets. Pure: data in, declarative content
+// out, rendered by Gladys with its own theme.
 //
 // A card holds at most four buttons, so a row cannot carry its own checkbox:
 // one "Check off" / "Done" button opens a form listing the pending entries,
@@ -143,17 +143,60 @@ export function shoppingWidget(items) {
   return { ttl_seconds: 120, components };
 }
 
-/** The tasks still to do, soonest first, with the add and done forms. */
-export function tasksWidget(tasks) {
-  const components = [{ type: 'text', text: T.widget.tasks, variant: 'heading' }];
+/**
+ * Today's and tomorrow's planned meals: each a list of { type, label, name }
+ * in the order of the day (see dayMeals).
+ */
+export function mealsWidget({ today, tomorrow }) {
+  if (today.length + tomorrow.length === 0) {
+    return messageWidget(T.widget.meals, T.widget.noMeals, 300);
+  }
+  const kind = (meal) => T.meal[meal.type] ?? same(cut(meal.label, 24) || '-');
+  const components = [{ type: 'text', text: T.widget.meals, variant: 'heading' }];
+  if (today.length === 0) {
+    components.push({ type: 'text', text: T.widget.nothingToday, variant: 'caption' });
+  }
+  components.push({
+    type: 'status',
+    items: [
+      ...today.map((meal) => ({
+        label: cut(meal.name, 40),
+        value: kind(meal),
+        icon: 'coffee',
+        color: WIDGET_COLORS.PRIMARY,
+      })),
+      ...tomorrow.map((meal) => ({
+        label: cut(meal.name, 40),
+        value: T.widget.tomorrow(kind(meal)),
+        icon: 'coffee',
+        color: WIDGET_COLORS.NEUTRAL,
+      })),
+    ].slice(0, 10),
+  });
+  return { ttl_seconds: 300, components };
+}
+
+/**
+ * The tasks still to do, soonest first, with the add and done forms. With a
+ * `member`, the widget is that person's: `tasks` are theirs only.
+ */
+export function tasksWidget(tasks, member = null) {
+  const name = member ? cut(member.name, 24) : '';
+  const heading = member ? T.widget.tasksOf(name) : T.widget.tasks;
+  const components = [{ type: 'text', text: heading, variant: 'heading' }];
   if (tasks.length === 0) {
-    components.push({ type: 'text', text: T.widget.tasksEmpty, variant: 'body' });
+    components.push({
+      type: 'text',
+      text: member ? T.widget.tasksEmptyFor(name) : T.widget.tasksEmpty,
+      variant: 'body',
+    });
   } else {
     components.push({ type: 'text', text: T.widget.toDo(tasks.length), variant: 'caption' });
     components.push(
       rows(tasks, (task) => ({
         label: cut(task.title, 40),
-        value: task.due || '-',
+        // On the family's widget, a row also says whose task it is.
+        value: cut([member ? '' : task.who, task.due].filter(Boolean).join(' · '), 40) || '-',
         icon: 'check-square',
         color: task.overdue ? WIDGET_COLORS.DANGER : WIDGET_COLORS.PRIMARY,
       })),
