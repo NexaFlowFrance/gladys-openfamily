@@ -1,11 +1,12 @@
 <div align="center">
-  <img src="cover.png" alt="OpenFamily pour Gladys Assistant" width="520">
+  <img src="cover.png" alt="OpenFamily pour Gladys Assistant, l'intégration officielle par NexaFlow" width="520">
   <h1>OpenFamily pour Gladys Assistant</h1>
   <p><strong>Le calendrier familial, la liste de courses et les tâches, directement dans votre domotique</strong><br>
   Deux projets open source français, tous deux hébergés à la maison.</p>
 
 🇬🇧 <a href="README.md">English</a> · 🇫🇷 <strong>Français</strong>
 
+[![Intégration officielle par NexaFlow](https://img.shields.io/badge/Int%C3%A9gration%20officielle-par%20NexaFlow-ff605c)](https://nexaflow.fr)
 [![Release](https://img.shields.io/github/v/release/NexaFlowFrance/gladys-openfamily?color=16a34a&label=version)](https://github.com/NexaFlowFrance/gladys-openfamily/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/NexaFlowFrance/gladys-openfamily/ci.yml?branch=main&label=CI)](https://github.com/NexaFlowFrance/gladys-openfamily/actions/workflows/ci.yml)
 [![Gladys Assistant](https://img.shields.io/badge/Gladys%20Assistant-5.2%2B-0ea5e9)](https://gladysassistant.com)
@@ -21,6 +22,9 @@ auto-hébergé : calendrier, liste de courses, tâches, repas, budget.
 [Gladys Assistant](https://gladysassistant.com) est un assistant domotique open source,
 respectueux de la vie privée. Cette intégration relie les deux : Gladys s'occupe de la maison,
 OpenFamily de la vie de famille qui s'y déroule.
+
+C'est l'intégration officielle d'OpenFamily pour Gladys Assistant, développée et maintenue par
+[NexaFlow](https://nexaflow.fr), l'équipe à l'origine d'OpenFamily.
 
 ## ✨ Ce que vous obtenez
 
@@ -90,8 +94,9 @@ Un problème, une idée ? Ouvrez une
 Construite à partir du
 [template JavaScript](https://github.com/GladysAssistant/integration-template-js) et du
 [SDK](https://github.com/GladysAssistant/integration-sdk-js) officiels de Gladys Assistant, en
-suivant les conseils donnés sur le forum de la communauté Gladys. C'est l'intégration du projet
-OpenFamily ; elle ne fait pas partie de Gladys Assistant.
+suivant les conseils donnés sur le forum de la communauté Gladys. C'est l'intégration officielle
+du projet OpenFamily, maintenue par [NexaFlow](https://nexaflow.fr). Elle ne fait pas partie de
+Gladys Assistant, où elle figure parmi les intégrations communautaires.
 
 ## 📄 Licence
 
