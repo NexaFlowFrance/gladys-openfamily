@@ -10,8 +10,34 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- A setting for the hour of the "Task due today" trigger, 7 by default, in the
+  family's time. The trigger used to fire at the first reading after midnight:
+  a scene announcing the day's tasks on a speaker would have spoken at night.
+
+### Fixed
+
+- The "Task due today" trigger fired again for the same tasks each time the
+  integration restarted: an update, a reboot of Gladys, a saved setting. What
+  was fired is now kept in `/data`, and a task is announced once on its day.
+- An OpenFamily older than 2.0 was reported as a refused API token. The
+  integration now says that the server is too old and has to be updated.
+- Every network failure gave the same "cannot be reached" message. The
+  connection status now says what is wrong: an unknown name, a refused
+  connection, a server that does not answer, `https://` on a plain HTTP server,
+  an untrusted certificate, or `localhost`, which is the integration itself.
+- When the API token was revoked in OpenFamily, the real-time channel kept
+  reconnecting for ever. It now stops, the connection status says so at once,
+  and the channel comes back with the next reading that succeeds.
+
 ### Changed
 
+- The real-time channel only triggers a reading for what the integration
+  shows. A change to the budget or the recipes no longer reads the shopping
+  list and the tasks again.
+- The documentation asks for the address of the server as Gladys reaches it,
+  not the one opened in the browser, and for OpenFamily 2.0 or later.
 - The cover image shown in the Gladys catalog now carries OpenFamily's own
   logo and colors, in place of a generic illustration.
 

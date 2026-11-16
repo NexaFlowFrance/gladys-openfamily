@@ -4,9 +4,21 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { DEFAULT_CONFIG, isConfigured, normalizeConfig } from '../src/config.js';
-import { parseQuantity } from '../src/openfamily.js';
+import {
+  ERRORS,
+  OpenFamilyError,
+  REASONS,
+  isLoopback,
+  networkFailure,
+  parseQuantity,
+} from '../src/openfamily.js';
 import { splitWindows, syncWindow, toGladysEvent } from '../src/calendar.js';
+import { createStateStore } from '../src/state.js';
+import { T, errorText } from '../src/i18n.js';
 
 test('normalizes the configuration, with the manifest defaults', () => {
   assert.deepEqual(normalizeConfig(), {
@@ -14,6 +26,7 @@ test('normalizes the configuration, with the manifest defaults', () => {
     token: '',
     pollMinutes: DEFAULT_CONFIG.poll_minutes,
     shoppingCategory: DEFAULT_CONFIG.shopping_category,
+    dueHour: DEFAULT_CONFIG.due_hour,
     timeZone: '',
   });
   const config = normalizeConfig({
@@ -21,14 +34,20 @@ test('normalizes the configuration, with the manifest defaults', () => {
     token: ' ofk_x ',
     poll_minutes: '999',
     shopping_category: ' Épicerie ',
+    due_hour: '18',
   });
   assert.deepEqual(config, {
     url: 'https://family.example.org',
     token: 'ofk_x',
     pollMinutes: 60,
     shoppingCategory: 'Épicerie',
+    dueHour: 18,
     timeZone: '',
   });
+  // Midnight is an hour like another; what is not an hour of the day is brought back to one.
+  assert.equal(normalizeConfig({ due_hour: 0 }).dueHour, 0);
+  assert.equal(normalizeConfig({ due_hour: 24 }).dueHour, 23);
+  assert.equal(normalizeConfig({ due_hour: '' }).dueHour, DEFAULT_CONFIG.due_hour);
   assert.equal(normalizeConfig({ timezone: ' Europe/Paris ' }).timeZone, 'Europe/Paris');
   assert.equal(normalizeConfig({ timezone: 'Paris' }).timeZone, '');
   assert.equal(isConfigured(config), true);
@@ -44,6 +63,95 @@ test('reads a quantity as OpenFamily stores it, or keeps it as a note', () => {
   assert.deepEqual(parseQuantity('a big one'), { notes: 'a big one' });
   assert.deepEqual(parseQuantity(''), {});
   assert.deepEqual(parseQuantity(undefined), {});
+});
+
+test('reads why a request failed from what Node says about it', () => {
+  const failed = (cause) => Object.assign(new TypeError('fetch failed'), { cause });
+  const reason = (err) => networkFailure(err).reason;
+  assert.equal(reason(failed({ code: 'ENOTFOUND' })), REASONS.DNS);
+  assert.equal(reason(failed({ code: 'EAI_AGAIN' })), REASONS.DNS);
+  assert.equal(reason(failed({ code: 'ECONNREFUSED' })), REASONS.REFUSED);
+  assert.equal(reason(failed({ code: 'EHOSTUNREACH' })), REASONS.TIMEOUT);
+  assert.equal(reason(failed({ code: 'UND_ERR_CONNECT_TIMEOUT' })), REASONS.TIMEOUT);
+  assert.equal(reason(failed({ code: 'ERR_SSL_WRONG_VERSION_NUMBER' })), REASONS.PROTOCOL);
+  for (const code of [
+    'DEPTH_ZERO_SELF_SIGNED_CERT',
+    'SELF_SIGNED_CERT_IN_CHAIN',
+    'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+    'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+    'CERT_HAS_EXPIRED',
+    'ERR_TLS_CERT_ALTNAME_INVALID',
+  ]) {
+    assert.equal(reason(failed({ code })), REASONS.CERTIFICATE, code);
+  }
+  // Several addresses tried (IPv6 then IPv4): the first failure speaks.
+  assert.equal(reason(failed({ errors: [{ code: 'ECONNREFUSED' }] })), REASONS.REFUSED);
+  // The request's own time limit.
+  const late = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+  assert.deepEqual(networkFailure(late), { detail: 'TimeoutError', reason: REASONS.TIMEOUT });
+  // Anything else keeps its code for the logs, and gets the general text.
+  assert.deepEqual(networkFailure(failed({ code: 'ECONNRESET' })), {
+    detail: 'ECONNRESET',
+    reason: '',
+  });
+  assert.deepEqual(networkFailure(new TypeError('fetch failed')), {
+    detail: 'TypeError',
+    reason: '',
+  });
+
+  assert.equal(isLoopback('http://localhost:3000'), true);
+  assert.equal(isLoopback('http://127.0.0.1:3000'), true);
+  assert.equal(isLoopback('http://[::1]:3000'), true);
+  assert.equal(isLoopback('http://192.168.1.20:3000'), false);
+  assert.equal(isLoopback('http://localhost.example.org'), false);
+  assert.equal(isLoopback(''), false);
+});
+
+test('every error has a text in both languages, short enough for a widget button', () => {
+  const errors = [
+    ...Object.values(ERRORS).map((code) => new OpenFamilyError(code)),
+    ...Object.values(REASONS).map((reason) => new OpenFamilyError(ERRORS.UNREACHABLE, '', reason)),
+  ];
+  const seen = new Set();
+  for (const err of errors) {
+    const text = errorText(err);
+    seen.add(text);
+    for (const language of ['en', 'fr']) {
+      assert.ok(text[language], `${err.message}: ${language}`);
+      // Gladys cuts the message of a widget button at 200 characters.
+      assert.ok(text[language].length <= 200, `${text[language].length}: ${text[language]}`);
+    }
+  }
+  assert.equal(seen.size, errors.length, 'one text per error and per reason');
+  assert.equal(errorText(new Error('anything else')), T.errors[ERRORS.SERVER]);
+  assert.equal(
+    errorText(new OpenFamilyError(ERRORS.UNREACHABLE, 'ECONNRESET')),
+    T.errors[ERRORS.UNREACHABLE],
+  );
+});
+
+test('keeps its state in a file, and does without when it cannot', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'gladys-openfamily-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = createStateStore(dir);
+  assert.deepEqual(store.load(), {}, 'nothing saved yet');
+  assert.equal(store.save({ firedDue: ['t1:2026-11-15'] }), true);
+  assert.deepEqual(createStateStore(dir).load(), { firedDue: ['t1:2026-11-15'] });
+  assert.deepEqual(await readdir(dir), ['state.json'], 'no half-written file left');
+
+  // A file that cannot be read as a state counts as none.
+  for (const content of ['{ "firedDue": [', '[1, 2]', 'null']) {
+    await writeFile(join(dir, 'state.json'), content);
+    assert.deepEqual(store.load(), {});
+  }
+
+  // No directory, or one that cannot be written: silently in memory only.
+  const nowhere = createStateStore(null);
+  assert.equal(nowhere.save({ firedDue: [] }), false);
+  assert.deepEqual(nowhere.load(), {});
+  const missing = createStateStore(join(dir, 'missing'));
+  assert.equal(missing.save({ firedDue: [] }), false);
+  assert.deepEqual(missing.load(), {});
 });
 
 const idFor = (id) => `ext:x:u:${id}`;

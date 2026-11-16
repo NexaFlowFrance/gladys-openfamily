@@ -19,6 +19,7 @@ import {
   todayWidget,
 } from './widgets.js';
 import { connectLive } from './live.js';
+import { STATE_DIR, createStateStore } from './state.js';
 import { T, errorText } from './i18n.js';
 
 const logger = createLogger({ name: 'openfamily' });
@@ -38,6 +39,9 @@ export const SCENE_TRIGGERS = {
 };
 
 const CALENDAR_COLOR = '#16a34a';
+// What the real-time channel can announce that this integration shows.
+const LIVE_LISTS = new Set(['shopping', 'tasks']);
+const LIVE_APPOINTMENTS = 'appointments';
 const MAX_EVENT_TEXT = 200;
 const MAX_OUTPUT_TEXT = 1000;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -67,8 +71,10 @@ export class OpenFamilyApp {
    * @param {() => Date} [options.now]
    * @param {typeof WebSocket | null} [options.WebSocketImpl] null: no real-time channel
    * @param {boolean} [options.timers] false: no periodic reading (tests drive it)
+   * @param {string | null} [options.stateDir] where the little that outlives a
+   *   restart is kept; null: nowhere
    */
-  constructor({ gladys, fetchImpl, now, WebSocketImpl, timers = true }) {
+  constructor({ gladys, fetchImpl, now, WebSocketImpl, timers = true, stateDir = STATE_DIR }) {
     this.gladys = gladys;
     this.fetchImpl = fetchImpl;
     this.now = now ?? (() => new Date());
@@ -77,6 +83,15 @@ export class OpenFamilyApp {
     this.config = normalizeConfig();
     this.client = new OpenFamilyClient({ url: '', token: '' });
     this.running = Promise.resolve();
+    this.store = createStateStore(stateDir);
+    // The "task due" triggers already fired, as "<task id>:<day>". Unlike the
+    // rest, it outlives a reconnection and a restart of the container (an
+    // update, a reboot of Gladys): the day's tasks are announced once.
+    const saved = this.store.load().firedDue;
+    this.firedDue = new Set(
+      Array.isArray(saved) ? saved.filter((key) => typeof key === 'string') : [],
+    );
+    this.savedFiredDue = JSON.stringify([...this.firedDue].sort());
     this.reset();
   }
 
@@ -88,7 +103,6 @@ export class OpenFamilyApp {
     // What a scene action of ours wrote: never fired back as a trigger, or a
     // scene bound to that trigger would loop through the integration.
     this.ownItems = new Set();
-    this.firedDue = new Set();
     this.calendarHashes = new Map();
     this.signatures = {};
   }
@@ -114,17 +128,54 @@ export class OpenFamilyApp {
     await this.adoptTimeZone();
     await this.tick();
     if (this.timers) {
-      this.pollTimer = setInterval(() => void this.tick(), this.config.pollMinutes * 60 * 1000);
+      this.pollTimer = setInterval(() => void this.poll(), this.config.pollMinutes * 60 * 1000);
       this.pollTimer.unref?.();
+      this.scheduleDue();
     }
-    if (this.WebSocketImpl !== null) {
-      this.stopLive = connectLive({
-        url: this.config.url,
-        token: this.config.token,
-        WebSocketImpl: this.WebSocketImpl,
-        onUpdate: (entity) => this.liveUpdate(entity),
-      });
+    this.openLive();
+  }
+
+  /** The periodic reading. A good one also reopens a real-time channel that was refused. */
+  async poll() {
+    if ((await this.tick()) && this.liveRefused) {
+      this.openLive();
     }
+  }
+
+  /**
+   * Reads again right when the hour of the "task due" trigger comes, so that
+   * it fires on time whatever the reading interval.
+   */
+  scheduleDue() {
+    const now = this.now();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), this.config.dueHour);
+    next.setSeconds(5);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const timer = setTimeout(async () => {
+      await this.refreshQuietly();
+      // Stopped or restarted during that reading: the new start has its own timer.
+      if (this.dueTimer === timer) this.scheduleDue();
+    }, next.getTime() - now.getTime());
+    timer.unref?.();
+    this.dueTimer = timer;
+  }
+
+  openLive() {
+    if (this.WebSocketImpl === null) return;
+    this.stopLive?.();
+    this.liveRefused = false;
+    this.stopLive = connectLive({
+      url: this.config.url,
+      token: this.config.token,
+      WebSocketImpl: this.WebSocketImpl,
+      onUpdate: (entity) => this.liveUpdate(entity),
+      // OpenFamily refused the token, or has just revoked it: read at once, so
+      // that the connection status says it now rather than at the next reading.
+      onRefused: () => {
+        this.liveRefused = true;
+        void this.tick();
+      },
+    });
   }
 
   /**
@@ -152,24 +203,34 @@ export class OpenFamilyApp {
 
   stop() {
     clearInterval(this.pollTimer);
+    clearTimeout(this.dueTimer);
+    this.dueTimer = undefined;
     clearTimeout(this.liveTimer);
     this.stopLive?.();
     this.stopLive = undefined;
+    this.liveRefused = false;
+    this.liveLists = false;
+    this.liveAppointments = false;
   }
 
   configUpdated(rawConfig) {
     return this.start(rawConfig);
   }
 
-  /** One full reading; reports the outcome as the connection status. Never throws. */
+  /**
+   * One full reading; reports the outcome as the connection status. Never
+   * throws: resolves to whether OpenFamily could be read.
+   */
   async tick() {
     try {
       await this.refresh();
       await this.syncCalendars();
       await this.status();
+      return true;
     } catch (err) {
       logger.warn(`Reading OpenFamily failed: ${err.message}`);
       await this.status(err);
+      return false;
     }
   }
 
@@ -181,15 +242,24 @@ export class OpenFamilyApp {
     }
   }
 
-  /** OpenFamily said something changed: read soon, once for a burst of changes. */
+  /**
+   * OpenFamily said something changed: read that soon, once for a burst of
+   * changes. The channel also announces what this integration never shows
+   * (budget, recipes, notes...): those are not worth a reading.
+   */
   liveUpdate(entity) {
-    this.liveAppointments = this.liveAppointments || entity === 'appointments';
+    if (entity === LIVE_APPOINTMENTS) this.liveAppointments = true;
+    else if (LIVE_LISTS.has(entity)) this.liveLists = true;
+    else return;
     clearTimeout(this.liveTimer);
     this.liveTimer = setTimeout(async () => {
-      const appointments = this.liveAppointments;
+      const { liveLists: lists, liveAppointments: appointments } = this;
+      this.liveLists = false;
       this.liveAppointments = false;
       try {
-        await this.refresh();
+        if (lists) {
+          await this.refresh();
+        }
         if (appointments) {
           await this.syncCalendars();
           this.nudge(WIDGETS.TODAY);
@@ -221,8 +291,12 @@ export class OpenFamilyApp {
           await this.gladys.publishSceneEvent(event.key, event.data);
         } catch (err) {
           logger.warn(`Scene event ${event.key} refused: ${err.message}`);
+          // A "task due" that Gladys did not receive is not fired: the next
+          // reading tries again, where remembering it would lose it for the day.
+          if (event.dueKey) this.firedDue.delete(event.dueKey);
         }
       }
+      this.rememberFiredDue();
       this.changed(WIDGETS.SHOPPING, pendingItems(shopping));
       this.changed(WIDGETS.TASKS, pendingTasks(tasks, localDay(this.now())));
     });
@@ -276,22 +350,35 @@ export class OpenFamilyApp {
         }
       }
     }
-    // Due today: once per task and per day.
+    // Due today: once per task and per day, and not before the hour the family
+    // chose: a scene that announces the day's tasks must not speak at midnight.
     for (const key of this.firedDue) {
       if (!key.endsWith(`:${today}`)) this.firedDue.delete(key);
     }
-    for (const task of pending) {
-      const key = `${task.id}:${today}`;
-      if (task.due === today && !this.firedDue.has(key)) {
-        this.firedDue.add(key);
-        events.push({
-          key: SCENE_TRIGGERS.TASK_DUE,
-          data: { title: bounded(task.title), due: task.due, count: pending.length },
-        });
+    if (this.now().getHours() >= this.config.dueHour) {
+      for (const task of pending) {
+        const dueKey = `${task.id}:${today}`;
+        if (task.due === today && !this.firedDue.has(dueKey)) {
+          this.firedDue.add(dueKey);
+          events.push({
+            key: SCENE_TRIGGERS.TASK_DUE,
+            data: { title: bounded(task.title), due: task.due, count: pending.length },
+            dueKey,
+          });
+        }
       }
     }
     this.tasks = current;
     return events;
+  }
+
+  /** Saves the "task due" triggers fired, when they are not the ones last saved. */
+  rememberFiredDue() {
+    const firedDue = [...this.firedDue].sort();
+    const signature = JSON.stringify(firedDue);
+    if (signature !== this.savedFiredDue && this.store.save({ firedDue })) {
+      this.savedFiredDue = signature;
+    }
   }
 
   /** A reading after a write of ours; the write itself already succeeded. */

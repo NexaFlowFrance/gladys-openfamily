@@ -17,6 +17,12 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
   const server = {
     scope,
     down: false,
+    /** The code Node gives for the failed connection of a server that is down. */
+    failure: 'ECONNREFUSED',
+    /** An OpenFamily older than 2.0: it has no API tokens, and refuses every one. */
+    legacy: false,
+    /** The token was revoked in OpenFamily. */
+    revoked: false,
     shopping: [],
     tasks: [],
     appointments: [],
@@ -30,18 +36,23 @@ export function createFakeOpenFamily({ scope = 'write' } = {}) {
     const url = new URL(String(input));
     const method = init.method ?? 'GET';
     const body = init.body ? JSON.parse(init.body) : undefined;
-    server.requests.push({ method, path: url.pathname, search: url.search, body });
+    const path = url.pathname;
+    const bearer = init.headers?.Authorization;
+    server.requests.push({ method, path, search: url.search, body, bearer: Boolean(bearer) });
     if (server.down) {
-      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: server.failure } });
     }
-    if (init.headers?.Authorization !== `Bearer ${TOKEN}`) {
+    // The route that manages the tokens came with them, in OpenFamily 2.0.
+    if (server.legacy && path === '/api/api-tokens') {
+      return json(404, { success: false, error: 'Route not found' });
+    }
+    if (server.legacy || server.revoked || bearer !== `Bearer ${TOKEN}`) {
       return json(401, { success: false, error: 'Invalid token' });
     }
     if (method !== 'GET' && server.scope === 'read') {
       return json(403, { success: false, error: 'read_only_token' });
     }
     const ok = (data) => json(200, { success: true, data });
-    const path = url.pathname;
 
     if (method === 'GET' && path === '/api/auth/me') {
       return ok({

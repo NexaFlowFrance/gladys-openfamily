@@ -7,6 +7,7 @@
 export const DEFAULT_CONFIG = {
   poll_minutes: 5,
   shopping_category: 'Autre',
+  due_hour: 7,
 };
 
 const number = (value, fallback, min, max) => {
@@ -47,6 +48,7 @@ export function normalizeConfig(raw = {}) {
     token: text(source.token),
     pollMinutes: number(source.poll_minutes, DEFAULT_CONFIG.poll_minutes, 1, 60),
     shoppingCategory: text(source.shopping_category) || DEFAULT_CONFIG.shopping_category,
+    dueHour: number(source.due_hour, DEFAULT_CONFIG.due_hour, 0, 23),
     timeZone: normalizeTimeZone(source.timezone),
   };
 }

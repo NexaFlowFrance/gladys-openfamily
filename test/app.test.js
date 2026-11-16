@@ -5,16 +5,28 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
 import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
 import { SCENE_ACTIONS, SCENE_TRIGGERS, WIDGETS, registerHandlers } from '../src/app.js';
+import { CLOSE_REFUSED } from '../src/live.js';
 import { WIDGET_ACTIONS } from '../src/widgets.js';
 import { TOKEN, URL_BASE, createFakeOpenFamily } from './helpers/fakeOpenFamily.js';
+import { createFakeWebSocket } from './helpers/fakeWebSocket.js';
 
 const NOW = new Date(2026, 10, 15, 10, 0, 0); // 15 November 2026, 10:00 local
 const USER = { selector: 'alex', first_name: 'Alex', language: 'fr' };
 
-async function setup({ scope = 'write', accounts = [{ user: USER, config: {} }], config } = {}) {
+async function setup({
+  scope = 'write',
+  accounts = [{ user: USER, config: {} }],
+  config,
+  now = () => NOW,
+  WebSocketImpl = null,
+  stateDir = null,
+} = {}) {
   const server = createFakeOpenFamily({ scope });
   const gladys = createFakeGladys({
     config: config ?? { url: `${URL_BASE}/`, token: TOKEN },
@@ -22,15 +34,25 @@ async function setup({ scope = 'write', accounts = [{ user: USER, config: {} }],
   });
   const app = registerHandlers(gladys, {
     fetchImpl: server.fetch,
-    now: () => NOW,
-    WebSocketImpl: null,
+    now,
+    WebSocketImpl,
     timers: false,
+    stateDir,
   });
   return { server, gladys, app };
 }
 
 const events = (gladys, key) => gladys.fake.sceneEvents.filter((event) => event.key === key);
 const texts = (content) => JSON.stringify(content);
+const asked = (server, path) => server.requests.filter((request) => request.path === path);
+
+/** Lets what the integration started on its own (a reading, a status) finish. */
+async function until(condition) {
+  for (let turn = 0; turn < 200 && !condition(); turn += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.ok(condition(), 'the expected state never came');
+}
 
 test('mirrors the family calendar into a calendar of the user who enabled it', async () => {
   const { server, gladys } = await setup();
@@ -306,6 +328,87 @@ test('fires "task due" once per task on its day', async () => {
   );
 });
 
+test('waits for the hour of the day before firing "task due"', async () => {
+  const trash = { id: 't1', title: 'Trash', due_date: '2026-11-15', is_completed: false };
+  const due = (gladys) => events(gladys, SCENE_TRIGGERS.TASK_DUE);
+
+  // The first reading of the day comes minutes after midnight: nobody is up.
+  let now = new Date(2026, 10, 15, 0, 5);
+  const { server, gladys, app } = await setup({ now: () => now });
+  server.tasks = [trash];
+  await gladys.connect();
+  assert.deepEqual(due(gladys), []);
+  now = new Date(2026, 10, 15, 6, 59, 59);
+  await app.refresh();
+  assert.deepEqual(due(gladys), []);
+  now = new Date(2026, 10, 15, 7, 0, 5);
+  await app.refresh();
+  assert.equal(due(gladys).length, 1);
+
+  // The hour is a setting.
+  const evening = await setup({ config: { url: URL_BASE, token: TOKEN, due_hour: 18 } });
+  evening.server.tasks = [trash];
+  await evening.gladys.connect();
+  assert.deepEqual(due(evening.gladys), [], 'it is 10:00');
+  // Past the hour, a task that is given today's date fires at the next reading.
+  const morning = await setup({ config: { url: URL_BASE, token: TOKEN, due_hour: 0 } });
+  await morning.gladys.connect();
+  morning.server.tasks = [trash];
+  await morning.app.refresh();
+  assert.equal(due(morning.gladys).length, 1);
+});
+
+test('remembers the "task due" it fired through a restart, until the next day', async (t) => {
+  const stateDir = await mkdtemp(join(tmpdir(), 'gladys-openfamily-'));
+  t.after(() => rm(stateDir, { recursive: true, force: true }));
+  const due = (gladys) => events(gladys, SCENE_TRIGGERS.TASK_DUE);
+  const start = async (options) => {
+    const started = await setup({ stateDir, ...options });
+    started.server.tasks = [
+      { id: 't1', title: 'Trash', due_date: '2026-11-15', is_completed: false },
+      { id: 't2', title: 'Homework', due_date: '2026-11-16', is_completed: false },
+    ];
+    await started.gladys.connect();
+    return started;
+  };
+
+  const first = await start();
+  assert.deepEqual(
+    due(first.gladys).map((event) => event.data.title),
+    ['Trash'],
+  );
+  // Saving a setting restarts the readings, not the day.
+  await first.gladys.fake.configUpdated({ url: URL_BASE, token: TOKEN, poll_minutes: 10 });
+  assert.equal(due(first.gladys).length, 1);
+
+  // The container restarts: an update of the integration, a reboot of Gladys.
+  const second = await start();
+  assert.deepEqual(due(second.gladys), []);
+
+  const nextDay = await start({ now: () => new Date(2026, 10, 16, 10) });
+  assert.deepEqual(
+    due(nextDay.gladys).map((event) => event.data.title),
+    ['Homework'],
+  );
+});
+
+test('fires "task due" again when Gladys did not receive it', async () => {
+  const { server, gladys, app } = await setup();
+  server.tasks = [{ id: 't1', title: 'Trash', due_date: '2026-11-15', is_completed: false }];
+  const publish = gladys.publishSceneEvent.bind(gladys);
+  let reachable = false;
+  gladys.publishSceneEvent = async (...args) => {
+    if (!reachable) throw new Error('Gladys is restarting');
+    return publish(...args);
+  };
+  await gladys.connect();
+  assert.deepEqual(events(gladys, SCENE_TRIGGERS.TASK_DUE), []);
+  reachable = true;
+  await app.refresh();
+  await app.refresh();
+  assert.equal(events(gladys, SCENE_TRIGGERS.TASK_DUE).length, 1);
+});
+
 test('says what is wrong: not configured, unreachable, token refused, read-only token', async () => {
   const unset = await setup({ config: {} });
   await unset.gladys.connect();
@@ -316,10 +419,10 @@ test('says what is wrong: not configured, unreachable, token refused, read-only 
   const down = await setup();
   down.server.down = true;
   await down.gladys.connect();
-  assert.match(down.gladys.fake.connectionStatus.message.fr, /injoignable/);
+  assert.match(down.gladys.fake.connectionStatus.message.fr, /refuse la connexion/);
   const widget = (await down.gladys.fake.widgetGet(WIDGETS.SHOPPING)).data.content;
   assert.deepEqual(validateWidgetContent(widget), []);
-  assert.match(texts(widget), /injoignable/);
+  assert.match(texts(widget), /refuse la connexion/);
   down.server.down = false;
   await down.app.tick();
   assert.equal(down.gladys.fake.connectionStatus.connected, true);
@@ -343,6 +446,118 @@ test('says what is wrong: not configured, unreachable, token refused, read-only 
     (await readOnly.gladys.fake.sceneAction(SCENE_ACTIONS.ADD_ITEM, { item: 'Milk' })).success,
     false,
   );
+});
+
+test('tells an old server from a refused token, and why a server cannot be reached', async () => {
+  const status = (gladys) => gladys.fake.connectionStatus.message;
+
+  // OpenFamily before 2.0 has no API tokens: it refuses every one, like a revoked one.
+  const old = await setup();
+  old.server.legacy = true;
+  await old.gladys.connect();
+  assert.match(status(old.gladys).fr, /trop ancien/);
+  const tested = await old.gladys.fake.action('test_connection', {});
+  assert.equal(tested.success, false);
+  assert.match(JSON.stringify(tested), /too old/);
+  // The question that tells them apart is asked without the token.
+  assert.ok(asked(old.server, '/api/api-tokens').length > 0);
+  assert.ok(asked(old.server, '/api/api-tokens').every((request) => !request.bearer));
+
+  // A server that knows API tokens is asked once, however often it refuses.
+  const refused = await setup({ config: { url: URL_BASE, token: 'ofk_wrong' } });
+  await refused.gladys.connect();
+  await refused.app.tick();
+  assert.match(status(refused.gladys).fr, /refusé le jeton/);
+  assert.equal(asked(refused.server, '/api/api-tokens').length, 1);
+
+  const reasons = [
+    ['ENOTFOUND', /ne trouve pas le serveur/],
+    ['ETIMEDOUT', /ne répond pas/],
+    ['ERR_SSL_WRONG_VERSION_NUMBER', /HTTP simple/],
+    ['DEPTH_ZERO_SELF_SIGNED_CERT', /certificat/],
+    ['ECONNRESET', /injoignable/],
+  ];
+  for (const [failure, text] of reasons) {
+    const down = await setup();
+    down.server.down = true;
+    down.server.failure = failure;
+    await down.gladys.connect();
+    assert.match(status(down.gladys).fr, text, failure);
+  }
+
+  // From its container, the integration is its own localhost.
+  const local = await setup({ config: { url: 'http://localhost:3000', token: TOKEN } });
+  local.server.down = true;
+  await local.gladys.connect();
+  assert.match(status(local.gladys).fr, /localhost désigne/);
+});
+
+test('reads at once when the real-time channel is refused, and reopens it after a good reading', async () => {
+  const WebSocketImpl = createFakeWebSocket();
+  const { sockets } = WebSocketImpl;
+  const { server, gladys, app } = await setup({ WebSocketImpl });
+  await gladys.connect();
+  assert.equal(sockets.length, 1);
+  sockets[0].open();
+  sockets[0].message({ type: 'auth', success: true });
+
+  // The token is revoked in OpenFamily, which closes the channel: said now,
+  // not at the next periodic reading.
+  server.revoked = true;
+  sockets[0].drop(CLOSE_REFUSED);
+  await until(() => gladys.fake.connectionStatus.connected === false);
+  assert.match(gladys.fake.connectionStatus.message.fr, /refusé le jeton/);
+
+  // Refused again at the next reading: the channel stays closed.
+  await app.poll();
+  assert.equal(sockets.length, 1);
+  // Both lists were refused, twice: the server was asked once what it knows.
+  assert.equal(asked(server, '/api/api-tokens').length, 1);
+
+  // Read again (OpenFamily also closes the channel of a token that still
+  // stands, when its account signs out everywhere): the channel reopens.
+  server.revoked = false;
+  await app.poll();
+  assert.equal(gladys.fake.connectionStatus.connected, true);
+  assert.equal(sockets.length, 2);
+  await app.poll();
+  assert.equal(sockets.length, 2, 'an open channel is left alone');
+  app.stop();
+  assert.equal(sockets[1].closed, true);
+});
+
+test('reads only what the real-time channel says changed', async (t) => {
+  const { server, gladys, app } = await setup();
+  await gladys.connect();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const paths = () => server.requests.map((request) => request.path).sort();
+  const settle = async () => {
+    for (let turn = 0; turn < 20; turn += 1) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  };
+
+  // The channel also announces what the integration never shows.
+  server.requests.length = 0;
+  for (const entity of ['budget', 'recipes', 'posts']) app.liveUpdate(entity);
+  t.mock.timers.tick(60 * 1000);
+  await settle();
+  assert.deepEqual(paths(), []);
+
+  // A burst of changes to the lists: one reading, and not of the calendar.
+  for (const entity of ['shopping', 'shopping', 'tasks']) app.liveUpdate(entity);
+  t.mock.timers.tick(1500);
+  await until(() => paths().length >= 2);
+  await settle();
+  assert.deepEqual(paths(), ['/api/shopping', '/api/tasks']);
+
+  server.requests.length = 0;
+  const nudges = gladys.fake.widgetRefreshes.length;
+  app.liveUpdate('appointments');
+  t.mock.timers.tick(1500);
+  await until(() => gladys.fake.widgetRefreshes.length > nudges);
+  assert.equal(gladys.fake.widgetRefreshes.at(-1), WIDGETS.TODAY);
+  assert.deepEqual(paths(), ['/api/appointments']);
 });
 
 test('the configuration buttons test the connection and synchronize on demand', async () => {

@@ -3,7 +3,7 @@
 // language of the user.
 // -----------------------------------------------------------------------------
 
-import { ERRORS } from './openfamily.js';
+import { ERRORS, REASONS } from './openfamily.js';
 
 const plural = (count, one, many) => (count === 1 ? one : many);
 
@@ -21,6 +21,10 @@ export const T = {
       en: 'OpenFamily refused the API token. It may have been revoked: create a new one.',
       fr: "OpenFamily a refusé le jeton d'API. Il a peut-être été révoqué : créez-en un nouveau.",
     },
+    [ERRORS.TOO_OLD]: {
+      en: 'This OpenFamily server is too old for API tokens. Update it to version 2.0 or later.',
+      fr: "Ce serveur OpenFamily est trop ancien pour les jetons d'API. Mettez-le à jour en version 2.0 ou plus récente.",
+    },
     [ERRORS.READ_ONLY]: {
       en: 'This API token is read-only. Create a "Read and write" token in OpenFamily.',
       fr: "Ce jeton d'API est en lecture seule. Créez un jeton « Lecture et écriture » dans OpenFamily.",
@@ -32,6 +36,34 @@ export const T = {
     [ERRORS.SERVER]: {
       en: 'OpenFamily answered with an error. Check that the address is the one of an OpenFamily server.',
       fr: "OpenFamily a répondu par une erreur. Vérifiez que l'adresse est bien celle d'un serveur OpenFamily.",
+    },
+  },
+  // An unreachable server, when the failure says why. Like every error text,
+  // at most 200 characters: Gladys cuts the message of a widget button there.
+  unreachable: {
+    [REASONS.LOOPBACK]: {
+      en: 'Seen from Gladys, localhost is the integration itself. Use the address of the machine running OpenFamily on your network, like http://192.168.1.20:3000.',
+      fr: "Vu de Gladys, localhost désigne l'intégration elle-même. Utilisez l'adresse de la machine d'OpenFamily sur votre réseau, comme http://192.168.1.20:3000.",
+    },
+    [REASONS.DNS]: {
+      en: 'Gladys cannot find the OpenFamily server under this name. Use its address on your network, like http://192.168.1.20:3000: a Tailscale or .local name may be unknown to Gladys.',
+      fr: 'Gladys ne trouve pas le serveur OpenFamily sous ce nom. Utilisez son adresse sur votre réseau, comme http://192.168.1.20:3000 : un nom Tailscale ou .local peut être inconnu de Gladys.',
+    },
+    [REASONS.REFUSED]: {
+      en: 'The OpenFamily server refuses the connection. Check the port in its address, and that OpenFamily is running.',
+      fr: "Le serveur OpenFamily refuse la connexion. Vérifiez le port dans son adresse, et qu'OpenFamily est démarré.",
+    },
+    [REASONS.TIMEOUT]: {
+      en: 'The OpenFamily server does not answer. Check its address, and that Gladys can reach it: a VPN address such as a Tailscale one often works from your own devices only.',
+      fr: 'Le serveur OpenFamily ne répond pas. Vérifiez son adresse, et que Gladys peut la joindre : une adresse de VPN, comme celle de Tailscale, ne fonctionne souvent que depuis vos appareils.',
+    },
+    [REASONS.PROTOCOL]: {
+      en: 'This address starts with https:// but the server answers in plain HTTP. Write it with http://.',
+      fr: 'Cette adresse commence par https:// mais le serveur répond en HTTP simple. Écrivez-la avec http://.',
+    },
+    [REASONS.CERTIFICATE]: {
+      en: 'Gladys does not trust the HTTPS certificate of the OpenFamily server. Use its http:// address on your network, or a certificate from a public authority.',
+      fr: "Gladys ne fait pas confiance au certificat HTTPS du serveur OpenFamily. Utilisez son adresse http:// sur votre réseau, ou un certificat d'une autorité publique.",
     },
   },
   connected: (name) => ({
@@ -98,4 +130,7 @@ export const T = {
 };
 
 /** The user-facing text of an error thrown by the OpenFamily client, or a generic one. */
-export const errorText = (err) => T.errors[err?.code] ?? T.errors[ERRORS.SERVER];
+export const errorText = (err) =>
+  (err?.code === ERRORS.UNREACHABLE && T.unreachable[err.reason]) ||
+  T.errors[err?.code] ||
+  T.errors[ERRORS.SERVER];

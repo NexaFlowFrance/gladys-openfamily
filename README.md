@@ -44,8 +44,8 @@ the family life that happens in it.
 
 ## 🚀 Install in three steps
 
-1. **In OpenFamily**, open **Settings**, then **API tokens**, create a **Read and write** token
-   and copy it. It is shown only once.
+1. **In OpenFamily** (2.0 or later), open **Settings**, then **API tokens**, create a **Read and
+   write** token and copy it. It is shown only once.
 2. **In Gladys** (5.2.0 or later), open **Integrations**, find **OpenFamily** in the catalog and
    install it.
 3. **Configure it**: the address of your OpenFamily server, the token, then **Test the
@@ -83,6 +83,7 @@ src/live.js         OpenFamily's real-time channel (WebSocket)
 src/calendar.js     appointments to Gladys events, sync windows
 src/widgets.js      the contents of the three widgets
 src/config.js       configuration defaults and normalization
+src/state.js        what is remembered through a restart, kept in /data
 src/i18n.js         every text, in English and French
 test/               node --test, against the SDK's fake Gladys and an in-memory OpenFamily
 ```
