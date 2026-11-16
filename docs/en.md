@@ -9,17 +9,19 @@ the household uses every day:
 - **The family calendar** becomes a Gladys calendar, kept up to date, shown in the **Calendar**
   view and usable in scenes ("an event of the calendar is coming"). Recurring appointments and
   full-day events are supported, over one month of history and twelve months ahead.
-- **Four dashboard widgets**: today's appointments, the shopping list, the tasks and the meals.
+- **Five dashboard widgets**: today's appointments, the shopping list, the tasks, the meals and
+  the reward points.
   The shopping list and the tasks have a button to add an entry and a button to check one off.
   The tasks widget can be the one of a single family member. On a day without an appointment,
   the first one shows the next three.
-- **Five scene actions**: add an item to the shopping list, add a task, read the shopping list,
-  read the tasks, read the menu. The last three hand their result to the next actions of the
-  scene (to announce it on a speaker, for instance).
+- **Seven scene actions**: add an item to the shopping list, add a task, stick a note on the
+  fridge, read the shopping list, read the tasks, read the menu, read the points. The last four
+  hand their result to the next actions of the scene (to announce it on a speaker, for
+  instance).
 - **Three scene triggers**: an item added to the list, a task completed, a task due today.
 
 Gladys never changes the OpenFamily calendar. It only writes to OpenFamily when you add or check
-off an item or a task, from a widget or a scene.
+off an item or a task, from a widget or a scene, and when a scene sticks a note on the fridge.
 
 This is the official OpenFamily integration, built and maintained by
 [NexaFlow](https://nexaflow.fr), the team behind OpenFamily.
@@ -50,7 +52,7 @@ This is the official OpenFamily integration, built and maintained by
    use it in scenes. The calendar is the same for the whole family: **one user only** should enable
    it, or every event shows twice.
 5. Add the widgets from the dashboard editor: they are named "OpenFamily: today", "OpenFamily:
-   shopping list", "OpenFamily: tasks" and "OpenFamily: meals".
+   shopping list", "OpenFamily: tasks", "OpenFamily: meals" and "OpenFamily: points".
 
 **A tasks widget per member.** In the settings of the "OpenFamily: tasks" widget, type a first
 name as it is written on the Family page of OpenFamily: the widget then shows only the tasks
@@ -70,6 +72,19 @@ then announce dinner on a speaker at the end of the afternoon.
 **Family members in scenes.** The "Task completed" and "Task due today" triggers give the
 "Assigned to" variable, the first names of the members concerned. The "Read the tasks" and "Add a
 task" actions take a first name, to read only one member's tasks or to assign one to them.
+
+**Points.** The "OpenFamily: points" widget shows the reward points of the members who earned
+some, the best placed first. With a first name in its settings, it becomes the card of one
+member: their points, their days in a row with a task done, and the tasks a parent has yet to
+approve. The "Read the points" scene action hands these points to the next actions, and the
+"Task completed" and "Task due today" triggers give the "Points" variable: what the task is
+worth.
+
+**A note on the fridge.** The "Stick a note on the fridge" scene action adds a note to the family
+notes of OpenFamily, "The washing machine is done" for instance. Everyone reads it in the app;
+OpenFamily sends no notification for a note. You choose its color and how long it stays: until
+tonight, for a day, for a week, or until someone removes it. The note is signed with the name of
+the account that created the API token.
 
 Optional settings:
 
@@ -126,6 +141,10 @@ Other cases:
   full name of the one you mean.
 - **The meals widget is empty**: it reads the meal planner of OpenFamily, for today and tomorrow.
   A meal with neither a recipe nor a text is not shown.
+- **The points widget says that the server does not give the points**: this version of
+  OpenFamily has no reward points. Update OpenFamily.
+- **Someone is missing from the points widget**: it only shows who has already earned or spent
+  a point. To see a member at zero, type their first name in the settings of the widget.
 - **Events show twice**: two users enabled the calendar. Disable it for one of them and share the
   remaining one with the household.
 - **Times are shifted**: check the family's time zone in OpenFamily, under **Settings**, then

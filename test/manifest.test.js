@@ -80,11 +80,13 @@ test('what a scene declaration promises is never taken back', () => {
     'title',
     'due',
     'assigned_to',
+    'points',
     'count',
   ]);
   assert.deepEqual(keys(manifest.scene_triggers, 'task_completed', 'variables'), [
     'title',
     'assigned_to',
+    'points',
     'count',
   ]);
   assert.deepEqual(keys(manifest.scene_actions, 'get_meals', 'outputs'), [
@@ -95,10 +97,15 @@ test('what a scene declaration promises is never taken back', () => {
     'dinner',
     'snack',
   ]);
+  assert.deepEqual(keys(manifest.scene_actions, 'get_points', 'outputs'), [
+    'points',
+    'streak',
+    'summary',
+  ]);
   // A field added to an action that scenes already use must stay optional.
   for (const action of manifest.scene_actions) {
     for (const field of action.fields ?? []) {
-      if (!['item', 'title'].includes(field.key)) {
+      if (!['item', 'title', 'text'].includes(field.key)) {
         assert.equal(field.required, false, `${action.key}.${field.key}`);
       }
     }

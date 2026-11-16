@@ -15,6 +15,7 @@ import {
   itemQuantity,
   mealsWidget,
   messageWidget,
+  rewardsWidget,
   shoppingWidget,
   tasksWidget,
   todayWidget,
@@ -23,18 +24,27 @@ import { connectLive } from './live.js';
 import { STATE_DIR, createStateStore } from './state.js';
 import { assignees, findMember } from './family.js';
 import { dayMeals } from './meals.js';
+import { memberPoints, scoreboard } from './rewards.js';
 import { T, errorText } from './i18n.js';
 
 const logger = createLogger({ name: 'openfamily' });
 
 export const ACTIONS = { TEST: 'test_connection', SYNC: 'sync_now' };
-export const WIDGETS = { TODAY: 'today', SHOPPING: 'shopping', TASKS: 'tasks', MEALS: 'meals' };
+export const WIDGETS = {
+  TODAY: 'today',
+  SHOPPING: 'shopping',
+  TASKS: 'tasks',
+  MEALS: 'meals',
+  REWARDS: 'rewards',
+};
 export const SCENE_ACTIONS = {
   ADD_ITEM: 'add_shopping_item',
   ADD_TASK: 'add_task',
+  ADD_NOTE: 'add_note',
   GET_SHOPPING: 'get_shopping_list',
   GET_TASKS: 'get_tasks',
   GET_MEALS: 'get_meals',
+  GET_POINTS: 'get_points',
 };
 export const SCENE_TRIGGERS = {
   ITEM_ADDED: 'shopping_item_added',
@@ -52,14 +62,26 @@ const LIVE_LISTS = new Set(['shopping', 'tasks']);
 const LIVE_APPOINTMENTS = 'appointments';
 // What it announces that is read by a widget only: no reading, the widget is
 // told to pull again. A member renamed changes whose tasks are whose.
-const LIVE_WIDGETS = { 'meal-plans': WIDGETS.MEALS, family: WIDGETS.TASKS };
+const LIVE_WIDGETS = {
+  'meal-plans': WIDGETS.MEALS,
+  family: WIDGETS.TASKS,
+  rewards: WIDGETS.REWARDS,
+};
 const MAX_EVENT_TEXT = 200;
 const MAX_OUTPUT_TEXT = 1000;
 const MAX_NAME = 40;
+// What OpenFamily accepts for a note on the fridge.
+const MAX_NOTE_TEXT = 500;
+const NOTE_COLORS = new Set(['yellow', 'pink', 'blue', 'green', 'orange']);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const bounded = (value, max = MAX_EVENT_TEXT) => String(value ?? '').slice(0, max);
 const dueDay = (task) => (typeof task.due_date === 'string' ? task.due_date.slice(0, 10) : '');
+/** The reward points a task is worth; none on most tasks. */
+const taskPoints = (task) => {
+  const points = Number(task?.points);
+  return Number.isFinite(points) ? Math.round(points) : 0;
+};
 
 /** The items still to buy. */
 export const pendingItems = (items) => (items ?? []).filter((item) => !item.is_checked);
@@ -80,6 +102,7 @@ export function pendingTasks(tasks, today) {
         overdue: Boolean(due) && due < today,
         assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.map(String) : [],
         who: assignees(task),
+        points: taskPoints(task),
       };
     })
     .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
@@ -95,6 +118,14 @@ class UnknownMember extends Error {
     const text = T.noMember(name);
     super(text.en);
     this.text = text;
+  }
+}
+
+/** The server answered, but not with the reward points: it has no such route. */
+class NoRewards extends Error {
+  constructor() {
+    super(T.widget.noRewards.en);
+    this.text = T.widget.noRewards;
   }
 }
 
@@ -354,6 +385,10 @@ export class OpenFamilyApp {
         }
       }
       this.rememberFiredDue();
+      // A task done is points earned: the points card is told to pull again.
+      if (events.some((event) => event.key === SCENE_TRIGGERS.TASK_COMPLETED)) {
+        this.nudge(WIDGETS.REWARDS);
+      }
       this.changed(WIDGETS.SHOPPING, pendingItems(shopping));
       this.changed(WIDGETS.TASKS, pendingTasks(tasks, localDay(this.now())));
     });
@@ -405,6 +440,7 @@ export class OpenFamilyApp {
             data: {
               title: bounded(task.title),
               assigned_to: bounded(assignees(task)),
+              points: taskPoints(task),
               count: pending.length,
             },
           });
@@ -427,6 +463,7 @@ export class OpenFamilyApp {
               title: bounded(task.title),
               due: task.due,
               assigned_to: bounded(task.who),
+              points: task.points,
               count: pending.length,
             },
             dueKey,
@@ -555,6 +592,7 @@ export class OpenFamilyApp {
       [WIDGETS.SHOPPING]: T.widget.shopping,
       [WIDGETS.TASKS]: T.widget.tasks,
       [WIDGETS.MEALS]: T.widget.meals,
+      [WIDGETS.REWARDS]: T.widget.points,
     };
     const { readOnly } = this;
     const today = localDay(this.now());
@@ -577,6 +615,15 @@ export class OpenFamilyApp {
       if (key === WIDGETS.MEALS) {
         return mealsWidget(await this.meals());
       }
+      if (key === WIDGETS.REWARDS) {
+        const [points, member] = await Promise.all([this.points(), this.member(settings?.member)]);
+        if (!member) return rewardsWidget(scoreboard(points));
+        // A member of the family the summary does not list has no point yet.
+        const theirs = points.find((entry) => entry.id === String(member.id));
+        return rewardsWidget([], {
+          member: theirs ?? { name: member.name, points: 0, streak: 0, pending: 0 },
+        });
+      }
       const events = await this.todayEvents();
       return todayWidget(events, {
         today,
@@ -597,6 +644,43 @@ export class OpenFamilyApp {
     const found = findMember(await this.client.family(), wanted);
     if (!found) throw new UnknownMember(wanted);
     return found;
+  }
+
+  /**
+   * The reward points of every member of the family (see memberPoints). A
+   * server that answers anything but them has no such route: said as it is,
+   * where the generic error would send the user to check the address.
+   */
+  async points() {
+    try {
+      return memberPoints(await this.client.rewards());
+    } catch (err) {
+      throw err.code === ERRORS.SERVER ? new NoRewards() : err;
+    }
+  }
+
+  /**
+   * When a note stuck by a scene leaves the fridge, as OpenFamily wants it: a
+   * local date-time, or '' for a note that stays. Tonight unless told otherwise:
+   * "the washing machine is done" is of no use tomorrow.
+   */
+  noteExpiry(choice) {
+    const now = this.now();
+    const inDays = (days) =>
+      naive(
+        new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() + days,
+          now.getHours(),
+          now.getMinutes(),
+          now.getSeconds(),
+        ),
+      );
+    if (choice === 'never') return '';
+    if (choice === 'day') return inDays(1);
+    if (choice === 'week') return inDays(7);
+    return `${localDay(now)}T23:59:59`;
   }
 
   /** Today's and tomorrow's planned meals, each in the order of the day. */
@@ -801,6 +885,30 @@ export class OpenFamilyApp {
             dinner: of('dinner'),
             snack: of('snack'),
           };
+        }
+        case SCENE_ACTIONS.GET_POINTS: {
+          const [points, member] = await Promise.all([this.points(), this.member(fields.member)]);
+          const shown = member
+            ? points.filter((entry) => entry.id === String(member.id))
+            : scoreboard(points);
+          return {
+            points: shown.reduce((sum, entry) => sum + entry.points, 0),
+            streak: member ? (shown[0]?.streak ?? 0) : 0,
+            summary: bounded(
+              shown.map((entry) => `${entry.name}: ${entry.points}`).join(', '),
+              MAX_OUTPUT_TEXT,
+            ),
+          };
+        }
+        case SCENE_ACTIONS.ADD_NOTE: {
+          const content = bounded(String(fields.text ?? '').trim(), MAX_NOTE_TEXT);
+          if (!content) throw new Error('The note is empty.');
+          await this.client.addNote({
+            content,
+            color: NOTE_COLORS.has(fields.color) ? fields.color : '',
+            expiresAt: this.noteExpiry(fields.expires),
+          });
+          return undefined;
         }
         default:
           throw new Error(`Unknown scene action ${key}`);

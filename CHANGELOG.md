@@ -12,6 +12,17 @@ the notes of the version's GitHub Release.
 
 ### Added
 
+- A points widget: the reward points of the family members who earned some,
+  the best placed first. With a first name in its settings, it is the card
+  of one member: their points, their days in a row with a task done, and the
+  tasks a parent has yet to approve.
+- A "Read the points" scene action, for everyone or for one member, and a
+  "Points" variable on the "Task completed" and "Task due today" triggers:
+  what the task is worth.
+- A "Stick a note on the fridge" scene action: a scene writes to the family
+  notes of OpenFamily, where everyone reads it in the app. The note has a
+  color, and stays until tonight, for a day, for a week or until someone
+  removes it. OpenFamily sends no notification for a note.
 - The form that adds a task from the tasks widget offers the due date in a
   list: no due date, today, tomorrow, Saturday or in a week. A date can still
   be typed as YYYY-MM-DD, and wins over the list.

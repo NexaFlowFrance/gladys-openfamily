@@ -20,6 +20,7 @@ import { splitWindows, syncWindow, toGladysEvent } from '../src/calendar.js';
 import { createStateStore } from '../src/state.js';
 import { assignees, findMember, plainName } from '../src/family.js';
 import { dayMeals, mealName } from '../src/meals.js';
+import { memberPoints, scoreboard } from '../src/rewards.js';
 import { NO_DUE, dueChoices } from '../src/widgets.js';
 import { T, errorText } from '../src/i18n.js';
 
@@ -219,6 +220,32 @@ test('reads the meals of a day in the order of the day', () => {
   assert.deepEqual(dayMeals(undefined, '2026-11-15'), []);
   assert.equal(mealName({ recipe: { name: 'Soup' }, custom_meal: 'x' }), 'Soup');
   assert.equal(mealName({}), '');
+});
+
+test('reads the reward points without trusting the shape of an undocumented answer', () => {
+  const members = memberPoints({
+    members: [
+      { id: 7, name: ' Léa ', balance: '12', streak: 3, pending_count: 2, has_activity: true },
+      { id: 'm2', name: 'Tom', balance: -4 },
+      { id: 'm3', name: 'Alex', balance: null, streak: 'many', pending_count: -1 },
+      { id: 'm4', name: '   ' },
+      { id: 'm5' },
+      null,
+    ],
+  });
+  assert.deepEqual(members, [
+    { id: '7', name: 'Léa', points: 12, streak: 3, pending: 2, active: true },
+    // A balance can be negative, and is activity by itself.
+    { id: 'm2', name: 'Tom', points: -4, streak: 0, pending: 0, active: true },
+    { id: 'm3', name: 'Alex', points: 0, streak: 0, pending: 0, active: false },
+  ]);
+  assert.deepEqual(
+    scoreboard(members).map((member) => member.name),
+    ['Léa', 'Tom'],
+  );
+  for (const odd of [undefined, null, 'nope', [], { members: 'none' }, {}]) {
+    assert.deepEqual(memberPoints(odd), []);
+  }
 });
 
 test('offers the due dates a tap can pick, Saturday only when it is not one of them', () => {
