@@ -21,6 +21,9 @@ dans Gladys ce qui sert au quotidien dans la maison :
 Gladys ne modifie jamais le calendrier d'OpenFamily. Elle n'écrit dans OpenFamily que lorsque vous
 ajoutez ou cochez un article ou une tâche, depuis un widget ou une scène.
 
+C'est l'intégration officielle d'OpenFamily, développée et maintenue par
+[NexaFlow](https://nexaflow.fr), l'équipe à l'origine d'OpenFamily.
+
 ## Prérequis
 
 - Gladys Assistant 5.2.0 ou plus récent.

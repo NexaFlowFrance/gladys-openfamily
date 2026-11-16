@@ -19,6 +19,9 @@ the household uses every day:
 Gladys never changes the OpenFamily calendar. It only writes to OpenFamily when you add or check
 off an item or a task, from a widget or a scene.
 
+This is the official OpenFamily integration, built and maintained by
+[NexaFlow](https://nexaflow.fr), the team behind OpenFamily.
+
 ## Requirements
 
 - Gladys Assistant 5.2.0 or later.

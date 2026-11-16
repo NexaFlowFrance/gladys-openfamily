@@ -39,7 +39,9 @@ the notes of the version's GitHub Release.
 - The documentation asks for the address of the server as Gladys reaches it,
   not the one opened in the browser, and for OpenFamily 2.0 or later.
 - The cover image shown in the Gladys catalog now carries OpenFamily's own
-  logo and colors, in place of a generic illustration.
+  logo and colors, in place of a generic illustration, with a badge saying
+  that this is the official OpenFamily integration, by NexaFlow. The README
+  and the documentation say so too.
 
 ## [0.2.0] - 2026-11-15
 
